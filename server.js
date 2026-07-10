@@ -127,20 +127,17 @@ app.get('/api/team/announcements', async (req, res) => {
 app.post('/api/team/scan', async (req, res) => {
     const { teamId, qrData } = req.body;
     try {
-        // Step 1: Extract numeric post value sequence identifier format matching
         const match = qrData.match(/SCOUT_STATION_ID_(\d+)/);
         if (!match) return res.status(400).json({ success: false, message: "Invalid system routing payload string." });
         
         const stationNum = parseInt(match[1]);
 
-        // Step 2: Grab active game configuration array
         const { data: activeGame } = await supabase.from('games').select('stations_json').eq('is_active', true).single();
         if (!activeGame) return res.status(400).json({ success: false, message: "No game config active." });
 
         const targetStation = activeGame.stations_json.find(st => parseInt(st.PostNo) === stationNum);
         if (!targetStation) return res.status(404).json({ success: false, message: "Station match missing in configuration array." });
 
-        // Step 3: Check if checkpoint has been previously captured
         const { data: existingLog } = await supabase.from('logs').select('*')
             .eq('team_id', teamId).eq('post_no', stationNum).eq('action_type', 'SCAN').maybeSingle();
 
@@ -148,7 +145,6 @@ app.post('/api/team/scan', async (req, res) => {
             return res.json({ success: true, message: "Station previously logged!", station: targetStation });
         }
 
-        // Step 4: Write new row trace directly to database logs
         await supabase.from('logs').insert([{
             team_id: teamId,
             post_no: stationNum,
@@ -156,7 +152,6 @@ app.post('/api/team/scan', async (req, res) => {
             details: `Scanned Checkpoint Station Post ${stationNum} at ${targetStation.PostLocation || 'Field Location'}`
         }]);
 
-        // Increment counter on team record rows directly
         const { data: teamData } = await supabase.from('teams').select('scans_count').eq('team_id', teamId).single();
         const currentCount = teamData ? (teamData.scans_count || 0) : 0;
         await supabase.from('teams').update({ scans_count: currentCount + 1 }).eq('team_id', teamId);
@@ -188,14 +183,27 @@ app.get('/api/team/logs/:teamId', async (req, res) => {
     return res.json({ success: true, logs: data || [] });
 });
 
-// --- SECURE PROCEDURAL TEAM CREATION ---
+// --- FIXED DYNAMIC TEAM CREATION ROUTING WITH CLEAN CHECKING ---
 app.post('/api/team/create', async (req, res) => {
     const { teamName, pin } = req.body;
     try {
+        const normalizedName = String(teamName).trim();
+        
+        // Explicitly check if the name is already taken to avoid false positives
+        const { data: existingTeam } = await supabase.from('teams')
+            .select('team_id')
+            .eq('team_name', normalizedName)
+            .maybeSingle();
+            
+        if (existingTeam) {
+            return res.status(400).json({ success: false, message: "Team name already taken. Please pick another name!" });
+        }
+
         const calculatedId = String(Math.floor(Math.random() * 900) + 100);
         const { error } = await supabase.from('teams').insert([
-            { team_id: calculatedId, team_name: teamName, pin: pin, scans_count: 0 }
+            { team_id: calculatedId, team_name: normalizedName, pin: String(pin).trim(), scans_count: 0 }
         ]);
+        
         if (error) throw error;
         return res.json({ success: true, teamId: calculatedId });
     } catch (err) {
@@ -206,11 +214,17 @@ app.post('/api/team/create', async (req, res) => {
 app.post('/api/team/rejoin', async (req, res) => {
     const { teamName, pin } = req.body;
     try {
-        const { data: team } = await supabase.from('teams').select('team_id, pin').eq('team_name', teamName).single();
-        if (team && team.pin === pin) return res.json({ success: true, teamId: team.team_id });
-        return res.status(401).json({ success: false });
+        const { data: team } = await supabase.from('teams')
+            .select('team_id', 'pin')
+            .eq('team_name', String(teamName).trim())
+            .maybeSingle();
+            
+        if (team && String(team.pin).trim() === String(pin).trim()) {
+            return res.json({ success: true, teamId: team.team_id });
+        }
+        return res.status(401).json({ success: false, message: "Invalid team name or pin combination." });
     } catch (err) {
-        return res.status(500).json({ success: false });
+        return res.status(500).json({ success: false, message: "Database query error." });
     }
 });
 
