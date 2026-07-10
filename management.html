@@ -315,7 +315,7 @@
             if(target === 'settings') { refreshStaffRegistryProfilesList(); }
         }
 
-        // RE-ENGINEERED EXCEL TEMPLATE ENGINE (SHEET1 COMPATIBLE PARSING)
+        // ALTERNATIVE EXPERIMENTAL FORMAT GENERATOR (USES TITLE CASE AND STRIPPED VALUE TYPES)
         function downloadTemplateFile(templateType) {
             let columnHeaders = [];
             let mockRows = [];
@@ -323,7 +323,8 @@
 
             if (templateType === 'people') {
                 fileName = "Operation_Chameleon_People_Registry_Template.xlsx";
-                columnHeaders = ["group_number", "scout_group", "category", "no_of_people"];
+                // Alternative fallback headers if standard backend checks for raw values
+                columnHeaders = ["Group Number", "Scout Group", "Category", "No Of People"];
                 mockRows = [
                     ["1", "1st Solihull (A)", "Scout", "5"],
                     ["2", "Knowle Explorer Unit", "ESU", "4"],
@@ -331,7 +332,7 @@
                 ];
             } else if (templateType === 'event') {
                 fileName = "Operation_Chameleon_Waypoint_Infrastructure_Template.xlsx";
-                columnHeaders = ["code", "type", "target_group", "value"];
+                columnHeaders = ["Code", "Type", "Target Group", "Value"];
                 mockRows = [
                     ["W01", "Waypoint", "All", "10"],
                     ["W02", "Waypoint", "Scout", "15"],
@@ -342,10 +343,9 @@
             const masterMatrix = [columnHeaders, ...mockRows];
             const workBook = XLSX.utils.book_new();
             
-            // Raw configuration parameter strips out math evaluations on IDs like W01
-            const workSheet = XLSX.utils.aoa_to_sheet(masterMatrix, { cellDates: true, raw: false });
+            // Build cell maps manually forcing text values to bypass backend regex evaluation exceptions
+            const workSheet = XLSX.utils.aoa_to_sheet(masterMatrix, { cellDates: false, raw: true });
             
-            // Appends template to "Sheet1" as strict default engine constraint
             XLSX.utils.book_append_sheet(workBook, workSheet, "Sheet1");
             XLSX.writeFile(workBook, fileName);
         }
