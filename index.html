@@ -29,10 +29,11 @@
         h1 { color: #2e7d32; margin-bottom: 5px; }
         .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }
         
-        /* The camera container */
+        /* The camera viewport box */
         #reader {
-            width: 100% !important;
-            border: 2px solid #2e7d32 !important;
+            width: 100%;
+            aspect-ratio: 1 / 1; /* Makes it a perfect square */
+            border: 2px solid #2e7d32;
             border-radius: 10px;
             overflow: hidden;
             background: #000;
@@ -54,11 +55,11 @@
 
     <div class="container">
         <h1>Scout Hunt</h1>
-        <p class="subtitle">Scan a checkpoint QR code to log your find!</p>
+        <p class="subtitle">Look around the area and scan the checkpoint QR codes!</p>
         
         <div id="reader"></div>
         
-        <div id="result-box" id="result">
+        <div id="result-box">
             <strong>Code Found!</strong><br>
             <span id="scanned-text"></span><br>
             <small id="scanned-time" style="color: #666;"></small>
@@ -66,40 +67,48 @@
     </div>
 
     <script>
-        // Once the webpage loads, start the scanner
-        function onScanSuccess(decodedText, decodedResult) {
-            // 1. Play a subtle beep sound or vibrate (optional)
-            if (navigator.vibrate) navigator.vibrate(100);
+        // Create the scanner object tied to our 'reader' div
+        const html5QrCode = new Html5Qrcode("reader");
 
-            // 2. Display the information on the screen
+        // What happens when a QR code is scanned successfully
+        function onScanSuccess(decodedText, decodedResult) {
+            if (navigator.vibrate) navigator.vibrate(100); // Quick phone buzz
+
             document.getElementById('result-box').style.display = 'block';
             document.getElementById('scanned-text').innerText = "Data: " + decodedText;
             
-            // 3. Log the exact date and time
             const now = new Date();
             document.getElementById('scanned-time').innerText = "Logged at: " + now.toLocaleString();
 
-            /* FUTURE STEP: This is where we will write the code to send 
-              'decodedText' and 'now' straight to your database!
-            */
-            
-            // Optional: Stop scanning after a successful catch to prevent spamming
-            html5QrcodeScanner.clear();
+            // Optional: Stop the camera after a successful scan so it doesn't loop scan
+            html5QrCode.stop().then((ignore) => {
+                console.log("Camera stopped after successful scan.");
+            }).catch((err) => {
+                console.error("Failed to stop camera.", err);
+            });
         }
 
-        function onScanFailure(error) {
-            // We leave this blank because the scanner fails many times per second 
-            // while looking for a QR code in the video frame.
-        }
+        // Configuration for the camera view
+        const config = { 
+            fps: 10, 
+            qrbox: function(viewfinderWidth, viewfinderHeight) {
+                // Sets the scanning square size dynamically based on screen size
+                const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                const edgeSize = Math.floor(minEdge * 0.7);
+                return { width: edgeSize, height: edgeSize };
+            }
+        };
 
-        // Initialize the scanner inside the div with id="reader"
-        let html5QrcodeScanner = new Html5QrcodeScanner(
-            "reader", 
-            { fps: 10, qrbox: {width: 250, height: 250} },
-            /* verbose= */ false
-        );
-        
-        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        // RUN IMMEDIATELY: Start the camera using the environment (rear) lens
+        html5QrCode.start(
+            { facingMode: "environment" }, // Forces the main back camera
+            config, 
+            onScanSuccess
+        ).catch((err) => {
+            // Handle cases where permission is denied or camera is missing
+            console.error("Unable to start camera.", err);
+            alert("Camera initialization failed. Please make sure you grant camera access permissions!");
+        });
     </script>
 </body>
 </html>
