@@ -9,7 +9,7 @@ app.use(express.json());
 
 // --- SECURE SUPABASE CONNECTION ---
 const SUPABASE_URL = 'https://ebtcoqdfhpmjlaevinvp.supabase.co';
-const SUPABASE_KEY = 'YOUR_ACTUAL_ANON_PUBLISHABLE_KEY_HERE'; // <-- Put your copied publishable key here!
+const SUPABASE_KEY = 'sb_publishable_sJR22My1jObDNxGm770e3w_TNW279jd'; 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // --- SECURE HOST LOGIN ---
