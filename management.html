@@ -322,7 +322,7 @@
             if(target === 'settings') { refreshStaffRegistryProfilesList(); }
         }
 
-        // DUAL COMPATIBILITY TEMPLATE ENGINE - SENDS DOCK ARRAYS WITH PRE-MAPPED KEYS
+        // OVERHAULED TEMPLATE ENGINE - UPDATED TO TITLE CASE HEADERS TO FIX BACKEND PARSING LOOPS
         function downloadTemplateFile(templateType) {
             let columnHeaders = [];
             let mockRows = [];
@@ -330,7 +330,7 @@
 
             if (templateType === 'people') {
                 fileName = "Operation_Chameleon_People_Registry_Template.xlsx";
-                columnHeaders = ["group_number", "scout_group", "category", "no_of_people"];
+                columnHeaders = ["Group Number", "Scout Group", "Category", "No Of People"];
                 mockRows = [
                     ["1", "1st Solihull (A)", "Scout", "5"],
                     ["2", "Knowle Explorer Unit", "ESU", "4"],
@@ -338,7 +338,7 @@
                 ];
             } else if (templateType === 'event') {
                 fileName = "Operation_Chameleon_Waypoint_Infrastructure_Template.xlsx";
-                columnHeaders = ["code", "type", "target_group", "value"];
+                columnHeaders = ["Code", "Type", "Target Group", "Value"];
                 mockRows = [
                     ["W01", "Waypoint", "All", "10"],
                     ["W02", "Waypoint", "Scout", "15"],
@@ -354,7 +354,6 @@
             XLSX.writeFile(workBook, fileName);
         }
 
-        // INSIGHT INSPECTOR DIAGNOSTIC: Prints the internal data properties structure of selected files
         function inspectSpreadsheetFile(input, type) {
             const file = input.files[0];
             if (!file) return;
@@ -582,6 +581,7 @@
             });
         }
 
+        font-weight: bold;
         function executeCreateStaffAccount() {
             const username = document.getElementById('new-staff-username').value.trim();
             const pin = document.getElementById('new-staff-pin').value.trim();
