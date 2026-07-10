@@ -315,7 +315,7 @@
             if(target === 'settings') { refreshStaffRegistryProfilesList(); }
         }
 
-        // FIXED AUTOMATED ENGINE: MAPS TO PRECISE LOWERCASE_UNDERSCORE BACKEND VARIABLE REQUIREMENTS
+        // RE-ENGINEERED EXCEL TEMPLATE ENGINE (SHEET1 COMPATIBLE PARSING)
         function downloadTemplateFile(templateType) {
             let columnHeaders = [];
             let mockRows = [];
@@ -341,8 +341,12 @@
 
             const masterMatrix = [columnHeaders, ...mockRows];
             const workBook = XLSX.utils.book_new();
-            const workSheet = XLSX.utils.aoa_to_sheet(masterMatrix);
-            XLSX.utils.book_append_sheet(workBook, workSheet, "Template Layout");
+            
+            // Raw configuration parameter strips out math evaluations on IDs like W01
+            const workSheet = XLSX.utils.aoa_to_sheet(masterMatrix, { cellDates: true, raw: false });
+            
+            // Appends template to "Sheet1" as strict default engine constraint
+            XLSX.utils.book_append_sheet(workBook, workSheet, "Sheet1");
             XLSX.writeFile(workBook, fileName);
         }
 
@@ -528,7 +532,6 @@
                 });
         }
 
-        // FIXED DIRECTORY ITERATOR: Properly evaluates currentQRFilterSelection against standard strings
         function evaluateQRSearchFilter() {
             const query = document.getElementById('qr-search-field').value.trim().toLowerCase();
             const grid = document.getElementById('qr-directory-canvas-target');
