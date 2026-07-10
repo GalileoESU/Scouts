@@ -322,7 +322,7 @@
             if(target === 'settings') { refreshStaffRegistryProfilesList(); }
         }
 
-        // OVERHAULED TEMPLATE ENGINE - UPDATED TO TITLE CASE HEADERS TO FIX BACKEND PARSING LOOPS
+        // OVERHAULED TEMPLATE ENGINE - MATCHES BACKEND PARSING REGEX STANDARDS EXACTLY
         function downloadTemplateFile(templateType) {
             let columnHeaders = [];
             let mockRows = [];
@@ -581,7 +581,6 @@
             });
         }
 
-        font-weight: bold;
         function executeCreateStaffAccount() {
             const username = document.getElementById('new-staff-username').value.trim();
             const pin = document.getElementById('new-staff-pin').value.trim();
