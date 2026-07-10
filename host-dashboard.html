@@ -30,8 +30,11 @@
         th { background: #f9f9f9; }
         .heading-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .heading-flex h2 { margin: 0; }
-        .qr-flex-container { display: flex; gap: 25px; flex-wrap: wrap; margin-top: 20px; justify-content: center; }
+        .qr-section-wrapper { display: flex; flex-direction: column; gap: 30px; }
+        .qr-block-row { background: #f9f9f9; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0; }
+        .qr-flex-container { display: flex; gap: 25px; flex-wrap: wrap; margin-top: 15px; justify-content: center; }
         .qr-box { display: flex; flex-direction: column; align-items: center; gap: 12px; background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd; width: 180px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
+        .qr-box canvas { display: block; }
     </style>
 </head>
 <body>
@@ -95,17 +98,36 @@
 
     <div id="qr-panel" class="panel">
         <div class="heading-flex">
-            <h2>Dynamic Game Checkpoint Passports</h2>
-            <button class="action-btn active-btn" id="pdf-btn" onclick="downloadQRpdf()" disabled>📥 Download All Cards PDF</button>
+            <h2>Game Checkpoint Passports Suite</h2>
+            <button class="action-btn active-btn" id="pdf-btn" onclick="downloadQRpdf()">📥 Download All Cards PDF</button>
         </div>
-        <p id="active-game-banner" style="color: #666; font-style: italic;">Select and activate a game configuration file inside the 'Host Uploads' panel to see checkpoint passport arrays.</p>
-        
-        <div class="qr-flex-container" id="qr-matrix-container"></div>
+
+        <div class="qr-section-wrapper">
+            <div class="qr-block-row">
+                <h3 style="margin:0 0 10px 0; color:#4a148c;">System Registration Target (Global Static)</h3>
+                <p style="margin:0; font-size:14px; color:#666;">This stays the same across all games. Place this at your starting area for new team registration.</p>
+                <div class="qr-flex-container">
+                    <div class="qr-box">
+                        <h4>Create Team Passport</h4>
+                        <div id="global-reg-qr"></div>
+                        <small>Value: SCOUT_CREATION_PASSPORT</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="qr-block-row">
+                <h3 style="margin:0 0 10px 0; color:#4a148c;">Dynamic Game Stations Checkpoints</h3>
+                <p id="active-game-banner" style="color: #999; font-style: italic; margin:0;">Select and activate a game configuration file inside the 'Host Uploads' panel to see checkpoint passport arrays.</p>
+                <div class="qr-flex-container" id="qr-matrix-container"></div>
+            </div>
+        </div>
     </div>
 
     <script>
         const BACKEND_URL = 'https://scouts-backend-24lj.onrender.com';
         let activeGameStations = []; 
+        let globalRegQrObj = null;
+        let stationQrObjects = [];
 
         function tab(name) {
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -115,6 +137,7 @@
             if(name === 'home') loadStats();
             if(name === 'logs') loadTeamsTable();
             if(name === 'uploads') loadGamesTable();
+            if(name === 'qr') renderGlobalQR();
         }
 
         function loadStats() {
@@ -220,13 +243,25 @@
             .then(data => { if(data.success) loadGamesTable(); });
         }
 
+        function renderGlobalQR() {
+            const container = document.getElementById('global-reg-qr');
+            if (container.children.length === 0) {
+                globalRegQrObj = new QRCode(container, {
+                    text: "SCOUT_CREATION_PASSPORT",
+                    width: 130,
+                    height: 130
+                });
+            }
+        }
+
         function renderStationQRGrid() {
             const container = document.getElementById('qr-matrix-container');
             container.innerHTML = '';
+            stationQrObjects = [];
+            
             if(activeGameStations.length === 0) return;
             
             document.getElementById('active-game-banner').style.display = 'none';
-            document.getElementById('pdf-btn').removeAttribute('disabled');
 
             activeGameStations.forEach((st, idx) => {
                 const box = document.createElement('div');
@@ -234,33 +269,91 @@
                 box.innerHTML = `<h4>Station Post ${st.PostNo || idx+1}</h4><div id="station-qr-${idx}"></div><small>${st.PostLocation || 'Game Coordinate'}</small>`;
                 container.appendChild(box);
 
-                new QRCode(document.getElementById(`station-qr-${idx}`), {
+                let qrObj = new QRCode(document.getElementById(`station-qr-${idx}`), {
                     text: `SCOUT_STATION_ID_${st.PostNo || idx+1}`,
                     width: 130,
                     height: 130
                 });
+                stationQrObjects.push({ obj: qrObj, info: st, index: idx });
             });
+        }
+
+        function getQrBase64Image(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return null;
+            const img = container.querySelector('img');
+            if (img && img.src && img.src.startsWith('data:image')) return img.src;
+            const canvas = container.querySelector('canvas');
+            if (canvas) return canvas.toDataURL("image/png");
+            return null;
         }
 
         function downloadQRpdf() {
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF();
-            pdf.setFont("Helvetica", "bold");
-            pdf.text("Game Station QR Target Passports Grid", 20, 20);
             
-            let yOffset = 40;
-            activeGameStations.forEach((st, idx) => {
-                if (yOffset > 240) { pdf.addPage(); yOffset = 30; }
-                pdf.text(`Station Checkpoint Post Number: ${st.PostNo || idx+1}`, 20, yOffset);
-                pdf.text(`Target Marker Info Location: ${st.PostLocation || 'Unassigned Field Location'}`, 20, yOffset + 6);
-                pdf.text(`Data Routing System ID Payload: SCOUT_STATION_ID_${st.PostNo || idx+1}`, 20, yOffset + 12);
-                pdf.line(20, yOffset + 18, 190, yOffset + 18);
-                yOffset += 30;
-            });
-            pdf.save("ScoutGame_Checkpoints_Manifest.pdf");
+            // 1. PAGE 1: Global Registration Passport
+            pdf.setFont("Helvetica", "bold");
+            pdf.setFontSize(22);
+            pdf.text("Scout Scavenger Hunt Setup Manifest", 20, 30);
+            
+            pdf.setFontSize(14);
+            pdf.text("1. Team Registration Passport (Permanent Master)", 20, 50);
+            pdf.setFont("Helvetica", "normal");
+            pdf.setFontSize(11);
+            pdf.text("Place this code block explicitly at your main base encampment checkpoint.", 20, 58);
+            pdf.text("System Routing URL String Payload: SCOUT_CREATION_PASSPORT", 20, 64);
+            
+            const regImg = getQrBase64Image('global-reg-qr');
+            if (regImg) {
+                pdf.addImage(regImg, 'PNG', 20, 72, 50, 50);
+            } else {
+                pdf.text("[QR Render Delay: Refresh screen and retry]", 20, 80);
+            }
+            
+            pdf.line(20, 135, 190, 135);
+
+            // 2. Dynamic Station Checkpoint Targets Routing
+            pdf.setFont("Helvetica", "bold");
+            pdf.setFontSize(14);
+            pdf.text("2. Active Game Station Node Targets", 20, 148);
+            
+            let yOffset = 160;
+            
+            if (activeGameStations.length === 0) {
+                pdf.setFont("Helvetica", "italic");
+                pdf.setFontSize(11);
+                pdf.text("No dynamic game config uploaded or set active yet.", 20, yOffset);
+            } else {
+                activeGameStations.forEach((st, idx) => {
+                    if (yOffset > 220) { 
+                        pdf.addPage(); 
+                        yOffset = 30; 
+                    }
+                    
+                    pdf.setFont("Helvetica", "bold");
+                    pdf.setFontSize(12);
+                    pdf.text(`Checkpoint Post Item Number: ${st.PostNo || idx+1}`, 20, yOffset);
+                    
+                    pdf.setFont("Helvetica", "normal");
+                    pdf.setFontSize(10);
+                    pdf.text(`Target Metric Location Info: ${st.PostLocation || 'Unassigned Field Coordinate'}`, 20, yOffset + 6);
+                    pdf.text(`System ID Value Match Data: SCOUT_STATION_ID_${st.PostNo || idx+1}`, 20, yOffset + 12);
+                    
+                    const stImg = getQrBase64Image(`station-qr-${idx}`);
+                    if (stImg) {
+                        pdf.addImage(stImg, 'PNG', 145, yOffset - 4, 32, 32);
+                    }
+                    
+                    pdf.line(20, yOffset + 32, 190, yOffset + 32);
+                    yOffset += 42;
+                });
+            }
+            
+            pdf.save("ScoutGame_EventMaster_WithQRs.pdf");
         }
 
-        window.onload = function() { loadStats(); };
+        window.onload = function() { loadStats(); renderGlobalQR(); };
     </script>
 </body>
 </html>

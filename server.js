@@ -55,12 +55,8 @@ app.get('/api/host/games', async (req, res) => {
 app.post('/api/host/games/activate', async (req, res) => {
     const { id } = req.body;
     try {
-        // Step 1: Explicitly clear active states from all files safely
         await supabase.from('games').update({ is_active: false }).neq('id', 0);
-        
-        // Step 2: Set the exact row match to true using numerical ID parameters
         const { error } = await supabase.from('games').update({ is_active: true }).eq('id', id);
-        
         if (error) throw error;
         return res.json({ success: true });
     } catch (err) {
@@ -99,20 +95,33 @@ app.post('/api/host/teams/delete', async (req, res) => {
     }
 });
 
-// --- PROCEDURAL REGISTRATION CODES ---
+// --- SECURE PROCEDURAL TEAM CREATION ---
 app.post('/api/team/create', async (req, res) => {
     const { teamName, pin } = req.body;
-    const { count } = await supabase.from('teams').select('*', { count: 'exact', head: true });
-    const nextId = String(count + 1).padStart(3, '0');
-    await supabase.from('teams').insert([{ team_id: nextId, team_name: teamName, pin: pin }]);
-    return res.json({ success: true, teamId: nextId });
+    try {
+        // Simple random 3 digit generated fallback id strings
+        const calculatedId = String(Math.floor(Math.random() * 900) + 100);
+        
+        const { error } = await supabase.from('teams').insert([
+            { team_id: calculatedId, team_name: teamName, pin: pin }
+        ]);
+        
+        if (error) throw error;
+        return res.json({ success: true, teamId: calculatedId });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 app.post('/api/team/rejoin', async (req, res) => {
     const { teamName, pin } = req.body;
-    const { data: team } = await supabase.from('teams').select('team_id, pin').eq('team_name', teamName).single();
-    if (team && team.pin === pin) return res.json({ success: true, teamId: team.team_id });
-    return res.status(401).json({ success: false });
+    try {
+        const { data: team } = await supabase.from('teams').select('team_id, pin').eq('team_name', teamName).single();
+        if (team && team.pin === pin) return res.json({ success: true, teamId: team.team_id });
+        return res.status(401).json({ success: false });
+    } catch (err) {
+        return res.status(500).json({ success: false });
+    }
 });
 
 app.get('/api/host/download-template', (req, res) => {
@@ -125,4 +134,4 @@ app.get('/api/host/download-template', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server securely running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
