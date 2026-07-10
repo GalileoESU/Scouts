@@ -346,7 +346,7 @@
         function renderDynamicMatrixGridSheet(categoryKey) {
             const filteredTeams = matrixCache.teams.filter(t => t.category === categoryKey);
             const targets = matrixCache.events.filter(e => e.type === 'Waypoint' && (e.target_group === 'All' || e.target_group.includes(categoryKey)));
-            const check Stations = matrixCache.events.filter(e => e.type === 'Checkpoint');
+            const checkStations = matrixCache.events.filter(e => e.type === 'Checkpoint');
 
             const headingRow = document.getElementById(`head-${categoryKey.toLowerCase()}`);
             const bodyRow = document.getElementById(`body-${categoryKey.toLowerCase()}`);
@@ -409,7 +409,7 @@
                     matrixCache = data;
                     const container = document.getElementById('checkpoint-stations-btn-box');
                     container.innerHTML = '';
-                    const check Stations = data.events.filter(e => e.type === 'Checkpoint');
+                    const checkStations = data.events.filter(e => e.type === 'Checkpoint');
 
                     if(checkStations.length === 0) {
                         container.innerHTML = '<p style="color:#666;">No configuration checkpoints found. Please load an Event spreadsheet sheet asset.</p>';
