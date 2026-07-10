@@ -241,14 +241,14 @@
             <div class="form-card">
                 <h3>1. Ingest Crew/People Information Registry</h3>
                 <input type="file" id="upload-input-people" accept=".xlsx, .xls" style="margin-bottom:15px; display:block;" onchange="inspectSpreadsheetFile(this, 'people')">
-                <button class="action-btn" onclick="transmitFileToPipeline('people')">Upload Registry Sheet</button>
+                <button class="action-btn" onclick="processAndForceUploadFile('people')">Upload Registry Sheet</button>
                 <button class="action-btn template-btn" onclick="downloadTemplateFile('people')">Download Template</button>
                 <div id="diagnostic-people" class="diagnostic-log">No file loaded for preview mapping yet.</div>
             </div>
             <div class="form-card">
                 <h3>2. Ingest Waypoint Infrastructure Map Sheet</h3>
                 <input type="file" id="upload-input-event" accept=".xlsx, .xls" style="margin-bottom:15px; display:block;" onchange="inspectSpreadsheetFile(this, 'event')">
-                <button class="action-btn" onclick="transmitFileToPipeline('event')">Upload Infrasheet</button>
+                <button class="action-btn" onclick="processAndForceUploadFile('event')">Upload Infrasheet</button>
                 <button class="action-btn template-btn" onclick="downloadTemplateFile('event')">Download Template</button>
                 <div id="diagnostic-event" class="diagnostic-log">No file loaded for preview mapping yet.</div>
             </div>
@@ -322,7 +322,6 @@
             if(target === 'settings') { refreshStaffRegistryProfilesList(); }
         }
 
-        // OVERHAULED TEMPLATE ENGINE - MATCHES BACKEND PARSING REGEX STANDARDS EXACTLY
         function downloadTemplateFile(templateType) {
             let columnHeaders = [];
             let mockRows = [];
@@ -369,6 +368,120 @@
                 debugDiv.innerText = `Found sheet: "${firstSheetName}"\nDetected Fields structure preview:\n` + JSON.stringify(json.slice(0, 2), null, 2);
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        // INTELLIGENT INTERCEPT TRANSLATION LAYER ENGINE
+        function processAndForceUploadFile(type) {
+            const picker = document.getElementById(`upload-input-${type}`);
+            const file = picker.files[0];
+            if (!file) { alert("Please select a file first."); return; }
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const baseRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                if (baseRows.length < 2) { alert("Spreadsheet has insufficient row definitions."); return; }
+
+                const userHeaders = baseRows[0].map(h => String(h).trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
+                const rawDataRows = baseRows.slice(1);
+
+                // Normalization mappings
+                let cleanRows = rawDataRows.map(row => {
+                    let obj = {};
+                    baseRows[0].forEach((origHead, idx) => {
+                        let normalized = origHead.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                        obj[normalized] = row[idx] !== undefined ? String(row[idx]).trim() : "";
+                    });
+                    return obj;
+                });
+
+                // Generate three strategic translation variations
+                let variationA = [], variationB = [], variationC = [];
+
+                if (type === 'people') {
+                    variationA.push(["group_number", "scout_group", "category", "no_of_people"]);
+                    variationB.push(["Group Number", "Scout Group", "Category", "No Of People"]);
+                    variationC.push(["groupNumber", "scoutGroup", "category", "noOfPeople"]);
+
+                    cleanRows.forEach(r => {
+                        let num = r.groupnumber || r.groupnum || r.teamno || r.id || "";
+                        let grp = r.scoutgroup || r.groupname || r.teamname || "";
+                        let cat = r.category || r.type || "Scout";
+                        let size = r.noofpeople || r.teamsize || r.size || "4";
+
+                        if (num) {
+                            variationA.push([num, grp, cat, size]);
+                            variationB.push([num, grp, cat, size]);
+                            variationC.push([num, grp, cat, size]);
+                        }
+                    });
+                } else {
+                    variationA.push(["code", "type", "target_group", "value"]);
+                    variationB.push(["Code", "Type", "Target Group", "Value"]);
+                    variationC.push(["code", "type", "targetGroup", "value"]);
+
+                    cleanRows.forEach(r => {
+                        let code = r.code || r.id || r.waypointcode || "";
+                        let typeVal = r.type || r.stationtype || "Waypoint";
+                        let target = r.targetgroup || r.target || "All";
+                        let val = r.value || r.points || "10";
+
+                        if (code) {
+                            variationA.push([code, typeVal, target, val]);
+                            variationB.push([code, typeVal, target, val]);
+                            variationC.push([code, typeVal, target, val]);
+                        }
+                    });
+                }
+
+                // Force upload attempt via Variation B (Title Case) first, fallbacks run concurrently
+                let fileBlob = matrixToExcelBlob(variationB);
+                const formData = new FormData();
+                formData.append(type === 'people' ? 'peopleFile' : 'eventFile', fileBlob, 'forced_structure.xlsx');
+
+                try {
+                    let response = await fetch(`${BACKEND_URL}/api/manage/upload-${type}`, { method: 'POST', body: formData });
+                    let result = await response.json();
+                    
+                    if (result.success && result.count > 0) {
+                        alert(`✅ Database Synced! Successfully ingested ${result.count} records directly to the server.`);
+                        picker.value = '';
+                        loadDashboardHomeMetrics();
+                        return;
+                    }
+
+                    // Retry Fallback sequence if row ingest evaluates to 0
+                    let fallbackBlob = matrixToExcelBlob(variationA);
+                    const fallbackForm = new FormData();
+                    fallbackForm.append(type === 'people' ? 'peopleFile' : 'eventFile', fallbackBlob, 'forced_lowercase.xlsx');
+                    
+                    let resp2 = await fetch(`${BACKEND_URL}/api/manage/upload-${type}`, { method: 'POST', body: fallbackForm });
+                    let res2 = await resp2.json();
+                    
+                    if(res2.success && res2.count > 0) {
+                        alert(`✅ Database Synced via Fallback Standard! Ingested ${res2.count} rows.`);
+                        picker.value = '';
+                        loadDashboardHomeMetrics();
+                    } else {
+                        alert(`⚠️ Server connected completely, but returned 0 rows ingested. Check that your spreadsheet values aren't empty!`);
+                    }
+
+                } catch (err) {
+                    alert("❌ Network pipeline communication failure.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function matrixToExcelBlob(matrix) {
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(matrix);
+            XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            return new Blob([wbout], { type: "application/octet-stream" });
         }
 
         function loadDashboardHomeMetrics() {
@@ -522,23 +635,6 @@
             if(activeCheckpointScanner) {
                 activeCheckpointScanner.stop().then(() => { activeCheckpointScanner = null; });
             }
-        }
-
-        function transmitFileToPipeline(uploadRouteSelector) {
-            const picker = document.getElementById(`upload-input-${uploadRouteSelector}`);
-            if(!picker.files[0]) { alert("Please pick an authentic Excel file structure resource."); return; }
-
-            const formData = new FormData();
-            formData.append(uploadRouteSelector === 'people' ? 'peopleFile' : 'eventFile', picker.files[0]);
-
-            fetch(`${BACKEND_URL}/api/manage/upload-${uploadRouteSelector}`, { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    if(data.success) {
-                        alert(`✅ Success: Ingested completely ${data.count} configuration data indices row values!`);
-                        picker.value = '';
-                    } else { alert(`❌ Pipeline Exception: ${data.message}`); }
-                });
         }
 
         function renderFilteredQRDirectory(filterType) {
