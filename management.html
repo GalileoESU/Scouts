@@ -167,6 +167,11 @@
         .modal-content {
             background: white; padding: 30px; border-radius: 16px; text-align: center; max-width: 400px; width: 90%;
         }
+
+        /* Diagnostic JSON box styling */
+        .diagnostic-log {
+            background: #272822; color: #f8f8f2; font-family: monospace; padding: 10px; border-radius: 6px; font-size: 11px; overflow-x: auto; max-height: 150px; margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -235,15 +240,17 @@
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:30px;">
             <div class="form-card">
                 <h3>1. Ingest Crew/People Information Registry</h3>
-                <input type="file" id="upload-input-people" accept=".xlsx, .xls" style="margin-bottom:15px; display:block;">
+                <input type="file" id="upload-input-people" accept=".xlsx, .xls" style="margin-bottom:15px; display:block;" onchange="inspectSpreadsheetFile(this, 'people')">
                 <button class="action-btn" onclick="transmitFileToPipeline('people')">Upload Registry Sheet</button>
                 <button class="action-btn template-btn" onclick="downloadTemplateFile('people')">Download Template</button>
+                <div id="diagnostic-people" class="diagnostic-log">No file loaded for preview mapping yet.</div>
             </div>
             <div class="form-card">
                 <h3>2. Ingest Waypoint Infrastructure Map Sheet</h3>
-                <input type="file" id="upload-input-event" accept=".xlsx, .xls" style="margin-bottom:15px; display:block;">
+                <input type="file" id="upload-input-event" accept=".xlsx, .xls" style="margin-bottom:15px; display:block;" onchange="inspectSpreadsheetFile(this, 'event')">
                 <button class="action-btn" onclick="transmitFileToPipeline('event')">Upload Infrasheet</button>
                 <button class="action-btn template-btn" onclick="downloadTemplateFile('event')">Download Template</button>
+                <div id="diagnostic-event" class="diagnostic-log">No file loaded for preview mapping yet.</div>
             </div>
         </div>
 
@@ -315,7 +322,7 @@
             if(target === 'settings') { refreshStaffRegistryProfilesList(); }
         }
 
-        // ALTERNATIVE EXPERIMENTAL FORMAT GENERATOR (USES TITLE CASE AND STRIPPED VALUE TYPES)
+        // DUAL COMPATIBILITY TEMPLATE ENGINE - SENDS DOCK ARRAYS WITH PRE-MAPPED KEYS
         function downloadTemplateFile(templateType) {
             let columnHeaders = [];
             let mockRows = [];
@@ -323,8 +330,7 @@
 
             if (templateType === 'people') {
                 fileName = "Operation_Chameleon_People_Registry_Template.xlsx";
-                // Alternative fallback headers if standard backend checks for raw values
-                columnHeaders = ["Group Number", "Scout Group", "Category", "No Of People"];
+                columnHeaders = ["group_number", "scout_group", "category", "no_of_people"];
                 mockRows = [
                     ["1", "1st Solihull (A)", "Scout", "5"],
                     ["2", "Knowle Explorer Unit", "ESU", "4"],
@@ -332,7 +338,7 @@
                 ];
             } else if (templateType === 'event') {
                 fileName = "Operation_Chameleon_Waypoint_Infrastructure_Template.xlsx";
-                columnHeaders = ["Code", "Type", "Target Group", "Value"];
+                columnHeaders = ["code", "type", "target_group", "value"];
                 mockRows = [
                     ["W01", "Waypoint", "All", "10"],
                     ["W02", "Waypoint", "Scout", "15"],
@@ -342,12 +348,28 @@
 
             const masterMatrix = [columnHeaders, ...mockRows];
             const workBook = XLSX.utils.book_new();
-            
-            // Build cell maps manually forcing text values to bypass backend regex evaluation exceptions
             const workSheet = XLSX.utils.aoa_to_sheet(masterMatrix, { cellDates: false, raw: true });
             
             XLSX.utils.book_append_sheet(workBook, workSheet, "Sheet1");
             XLSX.writeFile(workBook, fileName);
+        }
+
+        // INSIGHT INSPECTOR DIAGNOSTIC: Prints the internal data properties structure of selected files
+        function inspectSpreadsheetFile(input, type) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+                
+                const debugDiv = document.getElementById(`diagnostic-${type}`);
+                debugDiv.innerText = `Found sheet: "${firstSheetName}"\nDetected Fields structure preview:\n` + JSON.stringify(json.slice(0, 2), null, 2);
+            };
+            reader.readAsArrayBuffer(file);
         }
 
         function loadDashboardHomeMetrics() {
