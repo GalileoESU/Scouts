@@ -128,7 +128,7 @@ app.post('/api/team/scan', async (req, res) => {
     const { teamId, qrData } = req.body;
     try {
         const match = qrData.match(/SCOUT_STATION_ID_(\d+)/);
-        if (!match) return res.status(400).json({ success: false, message: "Invalid system routing payload string." });
+        if (!match) return res.status(400).json({ success: false, message: "Invalid code format." });
         
         const stationNum = parseInt(match[1]);
 
@@ -136,7 +136,7 @@ app.post('/api/team/scan', async (req, res) => {
         if (!activeGame) return res.status(400).json({ success: false, message: "No game config active." });
 
         const targetStation = activeGame.stations_json.find(st => parseInt(st.PostNo) === stationNum);
-        if (!targetStation) return res.status(404).json({ success: false, message: "Station match missing in configuration array." });
+        if (!targetStation) return res.status(404).json({ success: false, message: "Station missing from file setup." });
 
         const { data: existingLog } = await supabase.from('logs').select('*')
             .eq('team_id', teamId).eq('post_no', stationNum).eq('action_type', 'SCAN').maybeSingle();
@@ -183,23 +183,34 @@ app.get('/api/team/logs/:teamId', async (req, res) => {
     return res.json({ success: true, logs: data || [] });
 });
 
-// --- FIXED DYNAMIC TEAM CREATION ROUTING WITH CLEAN CHECKING ---
+// --- LINEAR SEQUENTIAL INCREMENTING TEAM CREATION SYSTEM (001, 002, 003) ---
 app.post('/api/team/create', async (req, res) => {
     const { teamName, pin } = req.body;
     try {
         const normalizedName = String(teamName).trim();
         
-        // Explicitly check if the name is already taken to avoid false positives
         const { data: existingTeam } = await supabase.from('teams')
             .select('team_id')
             .eq('team_name', normalizedName)
             .maybeSingle();
             
         if (existingTeam) {
-            return res.status(400).json({ success: false, message: "Team name already taken. Please pick another name!" });
+            return res.status(400).json({ success: false, message: "Team name already taken!" });
         }
 
-        const calculatedId = String(Math.floor(Math.random() * 900) + 100);
+        // Fetch all teams to count and establish linear ID position
+        const { data: currentTeams } = await supabase.from('teams').select('team_id');
+        let nextIndex = 1;
+        if (currentTeams && currentTeams.length > 0) {
+            const ids = currentTeams.map(t => parseInt(t.team_id)).filter(id => !isNaN(id));
+            if (ids.length > 0) {
+                nextIndex = Math.max(...ids) + 1;
+            }
+        }
+        
+        // Pad with leading zeros to maintain '001', '002' format
+        const calculatedId = String(nextIndex).padStart(3, '0');
+
         const { error } = await supabase.from('teams').insert([
             { team_id: calculatedId, team_name: normalizedName, pin: String(pin).trim(), scans_count: 0 }
         ]);
@@ -222,7 +233,7 @@ app.post('/api/team/rejoin', async (req, res) => {
         if (team && String(team.pin).trim() === String(pin).trim()) {
             return res.json({ success: true, teamId: team.team_id });
         }
-        return res.status(401).json({ success: false, message: "Invalid team name or pin combination." });
+        return res.status(401).json({ success: false, message: "Invalid team name or pin." });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Database query error." });
     }

@@ -4,84 +4,149 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scout Entry Portal</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #e0f2f1; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .login-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 360px; text-align: center; }
-        h1 { color: #004d40; margin-bottom: 25px; font-size: 24px; }
+        .login-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 380px; text-align: center; }
+        h1 { color: #004d40; margin-bottom: 20px; font-size: 24px; }
+        .menu-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
+        .menu-card { background: #f1f8f6; border: 2px solid #b2dfdb; padding: 18px; border-radius: 8px; font-weight: bold; color: #004d40; cursor: pointer; font-size: 16px; transition: transform 0.2s; }
+        .menu-card:hover { transform: scale(1.02); background: #e0f2f1; }
         .input-group { margin-bottom: 15px; text-align: left; }
         label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
         input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
         .action-btn { background: #00796b; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; }
-        .switch-link { margin-top: 15px; display: inline-block; font-size: 13px; color: #00796b; cursor: pointer; text-decoration: underline; }
-        .feedback-msg { margin-top: 15px; font-weight: bold; font-size: 14px; }
+        .back-link { margin-top: 15px; display: inline-block; font-size: 13px; color: #00796b; cursor: pointer; text-decoration: underline; }
+        .feedback-msg { margin-top: 15px; font-weight: bold; font-size: 14px; padding: 8px; border-radius: 4px; }
+        #scanner-box { width: 100%; max-width: 300px; margin: 15px auto; background: #000; border-radius: 6px; overflow: hidden; }
     </style>
 </head>
 <body>
 
     <div class="login-card">
-        <h1 id="portal-title">Create New Team</h1>
-        
-        <div class="input-group">
-            <label for="team-name">Team Username Name</label>
-            <input type="text" id="team-name" placeholder="e.g. Fox Patrol">
+        <div id="section-hub">
+            <h1>Scout Scavenger Portal</h1>
+            <p style="color:#666; font-size:14px; margin-bottom:25px;">Select an option below to enter the live game map tracker.</p>
+            <div class="menu-grid">
+                <div class="menu-card" onclick="switchPanel('SCAN_REG')">📷 Scan Team Creation Code</div>
+                <div class="menu-card" onclick="switchPanel('MANUAL_REG')">✏️ Create Team (Manual Form)</div>
+                <div class="menu-card" onclick="switchPanel('REJOIN')">🔑 Rejoin Existing Team</div>
+            </div>
         </div>
 
-        <div class="input-group">
-            <label for="team-pin">Access PIN</label>
-            <input type="password" id="team-pin" placeholder="4-digit pin" maxlength="6">
+        <div id="section-scan-reg" style="display:none;">
+            <h1>Scan Creation Passport</h1>
+            <p style="color:#666; font-size:13px;">Point camera lens layout target at the Master Registration Passport QR Code card.</p>
+            <div id="scanner-box"><div id="reg-reader" style="width:100%;"></div></div>
+            <span class="back-link" onclick="switchPanel('HUB')">← Return to Main Hub</span>
         </div>
 
-        <button class="action-btn" id="submit-btn" onclick="executePortalAction()">Register Team</button>
-        
-        <div>
-            <span class="switch-link" id="toggle-intent-link" onclick="togglePortalIntent()">Switch to Rejoin Existing Team</span>
+        <div id="section-manual-reg" style="display:none;">
+            <h1>New Team Registry</h1>
+            <div class="input-group">
+                <label>Team Username / Patrol Name</label>
+                <input type="text" id="reg-team-name" placeholder="e.g. Eagle Patrol">
+            </div>
+            <div class="input-group">
+                <label>Choose Access PIN</label>
+                <input type="password" id="reg-team-pin" placeholder="4-digit access code" maxlength="6">
+            </div>
+            <button class="action-btn" onclick="submitEntryAction('CREATE')">Register New Team Slot</button>
+            <span class="back-link" onclick="switchPanel('HUB')">← Return to Main Hub</span>
         </div>
-        
+
+        <div id="section-rejoin" style="display:none;">
+            <h1>Rejoin Existing Team</h1>
+            <div class="input-group">
+                <label>Registered Team Username</label>
+                <input type="text" id="login-team-name" placeholder="Enter team identifier title">
+            </div>
+            <div class="input-group">
+                <label>Team Access PIN</label>
+                <input type="password" id="login-team-pin" placeholder="Enter assigned security code">
+            </div>
+            <button class="action-btn" onclick="submitEntryAction('REJOIN')">Login / Connect Session</button>
+            <span class="back-link" onclick="switchPanel('HUB')">← Return to Main Hub</span>
+        </div>
+
         <div class="feedback-msg" id="status-feedback" style="display:none;"></div>
     </div>
 
     <script>
         const BACKEND_URL = 'https://scouts-backend-24lj.onrender.com';
-        let actionIntent = 'CREATE'; // Can be 'CREATE' or 'REJOIN'
+        let qrScannerInstance = null;
 
-        function togglePortalIntent() {
-            const title = document.getElementById('portal-title');
-            const button = document.getElementById('submit-btn');
-            const link = document.getElementById('toggle-intent-link');
-            const feedback = document.getElementById('status-feedback');
-            
-            feedback.style.display = 'none';
+        function switchPanel(panelTarget) {
+            document.getElementById('section-hub').style.display = 'none';
+            document.getElementById('section-scan-reg').style.display = 'none';
+            document.getElementById('section-manual-reg').style.display = 'none';
+            document.getElementById('section-rejoin').style.display = 'none';
+            document.getElementById('status-feedback').style.display = 'none';
 
-            if (actionIntent === 'CREATE') {
-                actionIntent = 'REJOIN';
-                title.innerText = "Rejoin Your Team";
-                button.innerText = "Login / Rejoin";
-                link.innerText = "Switch to Create New Team";
-            } else {
-                actionIntent = 'CREATE';
-                title.innerText = "Create New Team";
-                button.innerText = "Register Team";
-                link.innerText = "Switch to Rejoin Existing Team";
+            if(qrScannerInstance) {
+                qrScannerInstance.stop().then(() => { qrScannerInstance = null; });
             }
+
+            if(panelTarget === 'HUB') document.getElementById('section-hub').style.display = 'block';
+            if(panelTarget === 'SCAN_REG') {
+                document.getElementById('section-scan-reg').style.display = 'block';
+                startRegistrationScanner();
+            }
+            if(panelTarget === 'MANUAL_REG') document.getElementById('section-manual-reg').style.display = 'block';
+            if(panelTarget === 'REJOIN') document.getElementById('section-rejoin').style.display = 'block';
         }
 
-        function executePortalAction() {
-            const nameVal = document.getElementById('team-name').value.trim();
-            const pinVal = document.getElementById('team-pin').value.trim();
-            const feedback = document.getElementById('status-feedback');
+        function startRegistrationScanner() {
+            qrScannerInstance = new Html5Qrcode("reg-reader");
+            qrScannerInstance.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: 200 },
+                (decodedText) => {
+                    if(decodedText.trim() === "SCOUT_CREATION_PASSPORT") {
+                        switchPanel('MANUAL_REG');
+                        const feedback = document.getElementById('status-feedback');
+                        feedback.style.display = 'block';
+                        feedback.style.backgroundColor = '#e8f5e9';
+                        feedback.style.color = '#2e7d32';
+                        feedback.innerText = "🔑 Passport verified! Please input your custom team details below.";
+                    } else {
+                        const feedback = document.getElementById('status-feedback');
+                        feedback.style.display = 'block';
+                        feedback.style.backgroundColor = '#ffebee';
+                        feedback.style.color = '#c62828';
+                        feedback.innerText = "Invalid creation passport target code matched.";
+                    }
+                },
+                () => {}
+            ).catch(() => {});
+        }
 
-            if (!nameVal || !pinVal) {
+        function submitEntryAction(mode) {
+            const feedback = document.getElementById('status-feedback');
+            let nameVal = "", pinVal = "", targetEndpoint = "";
+
+            if(mode === 'CREATE') {
+                nameVal = document.getElementById('reg-team-name').value.trim();
+                pinVal = document.getElementById('reg-team-pin').value.trim();
+                targetEndpoint = '/api/team/create';
+            } else {
+                nameVal = document.getElementById('login-team-name').value.trim();
+                pinVal = document.getElementById('login-team-pin').value.trim();
+                targetEndpoint = '/api/team/rejoin';
+            }
+
+            if(!nameVal || !pinVal) {
                 feedback.style.display = 'block';
+                feedback.style.backgroundColor = '#ffebee';
                 feedback.style.color = '#c62828';
-                feedback.innerText = "Please fill out both inputs fields completely.";
+                feedback.innerText = "Please fill out all inputs forms.";
                 return;
             }
 
             feedback.style.display = 'block';
+            feedback.style.backgroundColor = '#e0f2f1';
             feedback.style.color = '#004d40';
-            feedback.innerText = "Authenticating with server engine...";
-
-            const targetEndpoint = actionIntent === 'CREATE' ? '/api/team/create' : '/api/team/rejoin';
+            feedback.innerText = "Processing server record pipeline link...";
 
             fetch(`${BACKEND_URL}${targetEndpoint}`, {
                 method: 'POST',
@@ -90,16 +155,18 @@
             })
             .then(async res => {
                 const data = await res.json();
-                if (res.ok && data.success) {
+                if(res.ok && data.success) {
                     localStorage.setItem('scout_team_id', data.teamId);
+                    feedback.style.backgroundColor = '#e8f5e9';
                     feedback.style.color = '#2e7d32';
-                    feedback.innerText = "Authorized! Launching application hub...";
+                    feedback.innerText = `Authorized! Connected as Team ${data.teamId}.`;
                     setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
                 } else {
-                    throw new Error(data.message || "Invalid inputs or verification error.");
+                    throw new Error(data.message || "Invalid credentials or authorization block.");
                 }
             })
             .catch(err => {
+                feedback.style.backgroundColor = '#ffebee';
                 feedback.style.color = '#c62828';
                 feedback.innerText = err.message;
             });
