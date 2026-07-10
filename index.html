@@ -3,175 +3,445 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scout Entry Portal</title>
+    <title>Operation Chameleon - Portal</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #4a148c; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; }
-        .login-card { background: white; padding: 35px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 360px; text-align: center; }
-        h1 { color: #4a148c; margin-bottom: 25px; font-size: 26px; font-weight: bold; }
-        .menu-grid { display: flex; flex-direction: column; gap: 15px; margin-top: 10px; }
-        .menu-card { background: #f3e5f5; border: 2px solid #ce93d8; padding: 20px; border-radius: 10px; font-weight: bold; color: #4a148c; cursor: pointer; font-size: 16px; transition: transform 0.2s, background 0.2s; }
-        .menu-card:hover { transform: scale(1.02); background: #e1bee7; }
-        .input-group { margin-bottom: 15px; text-align: left; }
-        label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
-        input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
-        .action-btn { background: #4a148c; color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; }
-        .back-link { margin-top: 20px; display: inline-block; font-size: 14px; color: #4a148c; cursor: pointer; text-decoration: underline; font-weight: 500; }
-        .feedback-msg { margin-top: 15px; font-weight: bold; font-size: 14px; padding: 10px; border-radius: 6px; text-align: center; }
-        #scanner-box { width: 100%; max-width: 280px; margin: 15px auto; background: #000; border-radius: 8px; overflow: hidden; }
-        .host-redirect { margin-top: 25px; color: rgba(255,255,255,0.7); font-size: 14px; cursor: pointer; text-decoration: underline; font-weight: 500; }
-        .host-redirect:hover { color: white; }
+        /* Fully Purple Theme Background UI */
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            background-color: #4a148c;
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Centered Layout Wrapper */
+        .portal-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        /* Branding Graphics Styles */
+        .main-logo {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 30px;
+        }
+
+        /* Standardized Action Buttons */
+        .btn {
+            background-color: white;
+            color: #4a148c;
+            border: none;
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.2s, background-color 0.2s;
+            box-sizing: border-box;
+        }
+        .btn:hover {
+            transform: scale(1.02);
+            background-color: #f3e5f5;
+        }
+        .btn-wrong {
+            background-color: #b71c1c;
+            color: white;
+        }
+        .btn-wrong:hover {
+            background-color: #e53935;
+        }
+
+        /* Input Fields Configuration */
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #ea80fc;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #ea80fc;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Header Setup for Sub-Screens */
+        .purple-header {
+            width: 100%;
+            background-color: #311b92;
+            padding: 15px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+        .back-arrow {
+            position: absolute;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .header-logo {
+            max-height: 40px;
+            width: auto;
+        }
+
+        /* Sub-screen Layering Container */
+        .sub-screen {
+            display: none;
+            width: 100%;
+            margin-top: 80px; /* offset for fixed header */
+            box-sizing: border-box;
+        }
+
+        /* Management Inline Router Link */
+        .mgmt-link {
+            display: block;
+            margin-top: 30px;
+            color: #ea80fc;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        /* Camera Scanner Housing Viewport */
+        #scanner-viewport {
+            width: 100%;
+            max-width: 320px;
+            margin: 20px auto;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 3px solid #ea80fc;
+            background: black;
+        }
+
+        /* Confidence-building Animated Loading Spinner */
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255,255,255,0.1);
+            border-top-color: white;
+            border-radius: 50%;
+            margin: 30px auto;
+            animation: spin 1s infinite linear;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Verification Info Display Box */
+        .info-card {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid #ea80fc;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: left;
+            margin-bottom: 25px;
+        }
+        .info-row {
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #ea80fc;
+            display: inline-block;
+            width: 140px;
+        }
+
+        .description-text {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #f3e5f5;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
 
-    <div class="login-card">
-        <div id="section-hub">
-            <h1>Scout Portal</h1>
-            <div class="menu-grid">
-                <div class="menu-card" onclick="switchPanel('SCAN_REG')">📷 Create New Team</div>
-                <div class="menu-card" onclick="switchPanel('REJOIN')">🔑 Rejoin Team</div>
-            </div>
+    <div class="portal-container">
+
+        <div id="screen-landing">
+            <img src="SSLogo.png" alt="Solihull Scouts Logo" class="main-logo">
+            <button class="btn" onclick="openSetupScanner()">Setup Team Account</button>
+            <button class="btn" onclick="showScreen('screen-login')">Login to Account</button>
+            <span class="mgmt-link" onclick="showScreen('screen-mgmt')">Management Login</span>
         </div>
 
-        <div id="section-scan-reg" style="display:none;">
-            <h1>Scan Creation Code</h1>
-            <p style="color:#666; font-size:13px; margin-bottom:15px;">Scan the Registration Passport QR Code to activate a team slot.</p>
-            <div id="scanner-box"><div id="reg-reader" style="width:100%;"></div></div>
-            <span class="back-link" onclick="switchPanel('HUB')">← Back</span>
+        <div id="screen-login" class="sub-screen">
+            <div class="purple-header">
+                <span class="back-arrow" onclick="goHome()">←</span>
+                <img src="OCLogo.png" alt="Operation Chameleon Logo" class="header-logo">
+            </div>
+            <h2>Team Login</h2>
+            <div class="input-group">
+                <label>Team Number</label>
+                <input type="text" id="login-team-id" placeholder="e.g. 023">
+            </div>
+            <div class="input-group">
+                <label>Team Access PIN</label>
+                <input type="password" id="login-team-pin" placeholder="Enter your secret PIN" maxlength="6">
+            </div>
+            <button class="btn" onclick="submitTeamLogin()">Sign In</button>
         </div>
 
-        <div id="section-manual-reg" style="display:none;">
-            <h1>Register Team</h1>
+        <div id="screen-mgmt" class="sub-screen">
+            <div class="purple-header">
+                <span class="back-arrow" onclick="goHome()">←</span>
+                <img src="OCLogo.png" alt="Operation Chameleon Logo" class="header-logo">
+            </div>
+            <h2>Management Portal</h2>
             <div class="input-group">
-                <label>Team Username Name</label>
-                <input type="text" id="reg-team-name" placeholder="e.g. Fox Patrol">
+                <label>Management ID</label>
+                <input type="text" id="mgmt-user" placeholder="Enter Admin Username">
             </div>
             <div class="input-group">
-                <label>Access PIN</label>
-                <input type="password" id="reg-team-pin" placeholder="4-digit security code" maxlength="6">
+                <label>Security PIN</label>
+                <input type="password" id="mgmt-pin" placeholder="Enter Admin PIN" maxlength="6">
             </div>
-            <button class="action-btn" onclick="submitEntryAction('CREATE')">Create Team</button>
-            <span class="back-link" onclick="switchPanel('HUB')">← Back</span>
+            <button class="btn" onclick="submitMgmtLogin()">Authorize System</button>
         </div>
 
-        <div id="section-rejoin" style="display:none;">
-            <h1>Rejoin Team</h1>
-            <div class="input-group">
-                <label>Registered Team Username</label>
-                <input type="text" id="login-team-name" placeholder="Enter your team name">
+        <div id="screen-scanner" class="sub-screen">
+            <div class="purple-header">
+                <span class="back-arrow" onclick="cancelScanner()">←</span>
+                <img src="OCLogo.png" alt="Operation Chameleon Logo" class="header-logo">
             </div>
-            <div class="input-group">
-                <label>Access PIN</label>
-                <input type="password" id="login-team-pin" placeholder="Enter security PIN">
-            </div>
-            <button class="action-btn" onclick="submitEntryAction('REJOIN')">Rejoin / Sync</button>
-            <span class="back-link" onclick="switchPanel('HUB')">← Back</span>
+            <h2>Scan Team Passport</h2>
+            <p class="description-text">Point your camera at your printed check-in card code to initialize activation.</p>
+            <div id="scanner-viewport"><div id="qr-camera-element" style="width:100%;"></div></div>
         </div>
 
-        <div class="feedback-msg" id="status-feedback" style="display:none;"></div>
+        <div id="screen-loading" class="sub-screen">
+            <h2>Synchronizing Network Matrix...</h2>
+            <p class="description-text">Establishing database lock and downloading group parameters from operations.</p>
+            <div class="spinner"></div>
+        </div>
+
+        <div id="screen-verify" class="sub-screen">
+            <div class="purple-header">
+                <span class="back-arrow" onclick="openSetupScanner()">←</span>
+                <img src="OCLogo.png" alt="Operation Chameleon Logo" class="header-logo">
+            </div>
+            <h2>Please Check These Details</h2>
+            <div class="info-card">
+                <div class="info-row"><span class="info-label">Team No.</span><span id="v-team-no">-</span></div>
+                <div class="info-row"><span class="info-label">Team Group</span><span id="v-team-group">-</span></div>
+                <div class="info-row"><span class="info-label">Team Category</span><span id="v-team-cat">-</span></div>
+                <div class="info-row"><span class="info-label">Participants</span><span id="v-team-count">-</span></div>
+            </div>
+            <button class="btn" onclick="showScreen('screen-pin-create')">Confirm Details</button>
+            <button class="btn btn-wrong" onclick="openSetupScanner()">Wrong Information</button>
+        </div>
+
+        <div id="screen-pin-create" class="sub-screen">
+            <div class="purple-header">
+                <span class="back-arrow" onclick="showScreen('screen-verify')">←</span>
+                <img src="OCLogo.png" alt="Operation Chameleon Logo" class="header-logo">
+            </div>
+            <h2>Create Pin</h2>
+            <p class="description-text">This pin is required to access your teams account. Please pick something you can remember. If you forget this pin, your team will be disqualified.</p>
+            <div class="input-group">
+                <label>Choose Account PIN</label>
+                <input type="password" id="create-team-pin" placeholder="Enter numeric pin code" maxlength="6">
+            </div>
+            <button class="btn" onclick="submitPinRegistration()">Lock & Register Pin</button>
+        </div>
+
+        <div id="screen-welcome" class="sub-screen">
+            <h1 style="font-size: 36px; margin-bottom: 10px;">Welcome!</h1>
+            <h2 id="welcome-team-display" style="color: #ea80fc; margin-bottom: 40px;">-</h2>
+            <div class="spinner"></div>
+        </div>
+
     </div>
-
-    <span class="host-redirect" onclick="location.href='host-login.html'">Go to Host Dashboard</span>
 
     <script>
         const BACKEND_URL = 'https://scouts-backend-24lj.onrender.com';
-        let qrScannerInstance = null;
+        let html5QrScanner = null;
+        let activeScannedGroupNum = null;
 
-        function switchPanel(panelTarget) {
-            document.getElementById('section-hub').style.display = 'none';
-            document.getElementById('section-scan-reg').style.display = 'none';
-            document.getElementById('section-manual-reg').style.display = 'none';
-            document.getElementById('section-rejoin').style.display = 'none';
-            document.getElementById('status-feedback').style.display = 'none';
-
-            if(qrScannerInstance) {
-                qrScannerInstance.stop().then(() => { qrScannerInstance = null; });
-            }
-
-            if(panelTarget === 'HUB') document.getElementById('section-hub').style.display = 'block';
-            if(panelTarget === 'SCAN_REG') {
-                document.getElementById('section-scan-reg').style.display = 'block';
-                startRegistrationScanner();
-            }
-            if(panelTarget === 'MANUAL_REG') document.getElementById('section-manual-reg').style.display = 'block';
-            if(panelTarget === 'REJOIN') document.getElementById('section-rejoin').style.display = 'block';
+        function showScreen(screenId) {
+            // Hide all views globally
+            document.getElementById('screen-landing').style.display = 'none';
+            document.querySelectorAll('.sub-screen').forEach(s => s.style.display = 'none');
+            
+            // Unveil targeted view layer
+            document.getElementById(screenId).style.display = 'block';
+            window.scrollTo(0,0);
         }
 
-        function startRegistrationScanner() {
-            qrScannerInstance = new Html5Qrcode("reg-reader");
-            qrScannerInstance.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: 200 },
+        function goHome() {
+            showScreen('screen-landing');
+        }
+
+        function cancelScanner() {
+            if(html5QrScanner) {
+                html5QrScanner.stop().then(() => { html5QrScanner = null; goHome(); }).catch(() => { goHome(); });
+            } else {
+                goHome();
+            }
+        }
+
+        function openSetupScanner() {
+            showScreen('screen-scanner');
+            html5QrScanner = new Html5Qrcode("qr-camera-element");
+            html5QrScanner.start(
+                { facingMode: "environment" }, { fps: 10, qrbox: 220 },
                 (decodedText) => {
-                    if(decodedText.trim() === "SCOUT_CREATION_PASSPORT") {
-                        switchPanel('MANUAL_REG');
-                        const feedback = document.getElementById('status-feedback');
-                        feedback.style.display = 'block';
-                        feedback.style.backgroundColor = '#e8f5e9';
-                        feedback.style.color = '#2e7d32';
-                        feedback.innerText = "✅ Passport authorized! Setup your name and pin below.";
-                    } else {
-                        const feedback = document.getElementById('status-feedback');
-                        feedback.style.display = 'block';
-                        feedback.style.backgroundColor = '#ffebee';
-                        feedback.style.color = '#c62828';
-                        feedback.innerText = "❌ Invalid creation passport code matched.";
+                    const match = decodedText.match(/CHAMELEON_INITIALIZE_GROUP_(.+)/);
+                    if (match) {
+                        activeScannedGroupNum = match[1].trim();
+                        html5QrScanner.stop().then(() => {
+                            html5QrScanner = null;
+                            executeConfidenceLoading();
+                        });
                     }
-                },
-                () => {}
+                }, () => {}
             ).catch(() => {});
         }
 
-        function submitEntryAction(mode) {
-            const feedback = document.getElementById('status-feedback');
-            let nameVal = "", pinVal = "", targetEndpoint = "";
+        function executeConfidenceLoading() {
+            showScreen('screen-loading');
+            
+            // Fetch validation criteria rows directly from backend infrastructure APIs
+            fetch(`${BACKEND_URL}/api/team/setup-lookup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ groupNo: activeScannedGroupNum })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('v-team-no').innerText = data.team.group_number;
+                    document.getElementById('v-team-group').innerText = data.team.scout_group;
+                    document.getElementById('v-team-cat').innerText = data.team.category;
+                    document.getElementById('v-team-count').innerText = `${data.team.no_of_people} Members`;
+                    
+                    // Confidence-building artificial delay rule block enforcement
+                    setTimeout(() => {
+                        showScreen('screen-verify');
+                    }, 2500);
+                } else {
+                    alert(data.message || "Invalid setup code structure mapping.");
+                    goHome();
+                }
+            })
+            .catch(() => {
+                alert("Network communication error linking pipeline parameters.");
+                goHome();
+            });
+        }
 
-            if(mode === 'CREATE') {
-                nameVal = document.getElementById('reg-team-name').value.trim();
-                pinVal = document.getElementById('reg-team-pin').value.trim();
-                targetEndpoint = '/api/team/create';
-            } else {
-                nameVal = document.getElementById('login-team-name').value.trim();
-                pinVal = document.getElementById('login-team-pin').value.trim();
-                targetEndpoint = '/api/team/rejoin';
-            }
-
-            if(!nameVal || !pinVal) {
-                feedback.style.display = 'block';
-                feedback.style.backgroundColor = '#ffebee';
-                feedback.style.color = '#c62828';
-                feedback.innerText = "Please complete all inputs fields.";
+        function submitPinRegistration() {
+            const pinVal = document.getElementById('create-team-pin').value.trim();
+            if(!pinVal || pinVal.length < 4) {
+                alert("Please create an authentic PIN code sequence (minimum 4 digits).");
                 return;
             }
 
-            feedback.style.display = 'block';
-            feedback.style.backgroundColor = '#f3e5f5';
-            feedback.style.color = '#4a148c';
-            feedback.innerText = "Connecting to pipeline...";
-
-            fetch(`${BACKEND_URL}${targetEndpoint}`, {
+            fetch(`${BACKEND_URL}/api/team/setup-confirm`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ teamName: nameVal, pin: pinVal })
+                body: JSON.stringify({ groupNo: activeScannedGroupNum, pin: pinVal })
             })
-            .then(async res => {
-                const data = await res.json();
-                if(res.ok && data.success) {
-                    localStorage.setItem('scout_team_id', data.teamId);
-                    feedback.style.backgroundColor = '#e8f5e9';
-                    feedback.style.color = '#2e7d32';
-                    feedback.innerText = `Authorized as Team ${data.teamId}! Launching...`;
-                    setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('welcome-team-display').innerText = `${document.getElementById('v-team-group').innerText} (${activeScannedGroupNum})`;
+                    showScreen('screen-welcome');
+                    
+                    localStorage.setItem('chameleon_user_type', 'TEAM');
+                    localStorage.setItem('chameleon_team_id', activeScannedGroupNum);
+                    
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 3000);
                 } else {
-                    throw new Error(data.message || "Invalid credentials.");
+                    alert("Failed to lock secure profile parameters.");
                 }
-            })
-            .catch(err => {
-                feedback.style.backgroundColor = '#ffebee';
-                feedback.style.color = '#c62828';
-                feedback.innerText = err.message;
             });
+        }
+
+        function submitTeamLogin() {
+            const groupNo = document.getElementById('login-team-id').value.trim();
+            const pin = document.getElementById('login-team-pin').value.trim();
+
+            if(!groupNo || !pin) { alert("Please input complete values."); return; }
+
+            fetch(`${BACKEND_URL}/api/team/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ groupNo, pin })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    localStorage.setItem('chameleon_user_type', 'TEAM');
+                    localStorage.setItem('chameleon_team_id', data.team.group_number);
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert(data.message);
+                }
+            }).catch(() => alert("Pipeline connection error."));
+        }
+
+        function submitMgmtLogin() {
+            const username = document.getElementById('mgmt-user').value.trim();
+            const pin = document.getElementById('mgmt-pin').value.trim();
+
+            if(!username || !pin) { alert("Please complete both forms."); return; }
+
+            fetch(`${BACKEND_URL}/api/manage/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, pin })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    localStorage.setItem('chameleon_user_type', 'MGMT');
+                    localStorage.setItem('chameleon_mgmt_user', data.user);
+                    window.location.href = 'management.html';
+                } else {
+                    alert(data.message);
+                }
+            }).catch(() => alert("Pipeline communication error."));
         }
     </script>
 </body>
