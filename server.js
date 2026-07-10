@@ -24,7 +24,7 @@ app.post('/api/host/login', (req, res) => {
     return res.status(401).json({ success: false, message: "Invalid credentials" });
 });
 
-// --- EXCEL UPLOAD & STATION PARSING ---
+// --- EXCEL UPLOAD, STORAGE & DELETE ROUTINES ---
 app.post('/api/host/upload-game', upload.single('gameFile'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: "Missing upload data" });
@@ -46,7 +46,6 @@ app.post('/api/host/upload-game', upload.single('gameFile'), async (req, res) =>
     }
 });
 
-// --- LIST AND SET ACTIVE GAMES ---
 app.get('/api/host/games', async (req, res) => {
     const { data } = await supabase.from('games').select('*').order('created_at', { ascending: false });
     return res.json({ success: true, games: data || [] });
@@ -64,7 +63,18 @@ app.post('/api/host/games/activate', async (req, res) => {
     }
 });
 
-// --- REAL-TIME TEAM LIST AND STATS ---
+app.post('/api/host/games/delete', async (req, res) => {
+    const { id } = req.body;
+    try {
+        const { error } = await supabase.from('games').delete().eq('id', id);
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// --- REAL-TIME TEAM DATA TRACKING ---
 app.get('/api/host/teams', async (req, res) => {
     const { data: teams } = await supabase.from('teams').select('*').order('created_at', { ascending: false });
     return res.json({ success: true, teams: teams || [] });
@@ -80,7 +90,6 @@ app.get('/api/host/stats', async (req, res) => {
     }
 });
 
-// --- DYNAMIC PURGE LOGIC OPERATIONS ---
 app.post('/api/host/teams/delete', async (req, res) => {
     const { all, teamId } = req.body;
     try {
@@ -95,17 +104,14 @@ app.post('/api/host/teams/delete', async (req, res) => {
     }
 });
 
-// --- SECURE PROCEDURAL TEAM CREATION ---
+// --- CLEAN TRANSACTUAL TEAM CREATION ROUTING ---
 app.post('/api/team/create', async (req, res) => {
     const { teamName, pin } = req.body;
     try {
-        // Simple random 3 digit generated fallback id strings
         const calculatedId = String(Math.floor(Math.random() * 900) + 100);
-        
         const { error } = await supabase.from('teams').insert([
             { team_id: calculatedId, team_name: teamName, pin: pin }
         ]);
-        
         if (error) throw error;
         return res.json({ success: true, teamId: calculatedId });
     } catch (err) {

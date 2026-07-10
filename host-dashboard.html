@@ -22,7 +22,7 @@
         .card h3 { margin: 0; color: #666; font-size: 13px; }
         .card p { margin: 8px 0 0 0; color: #2e7d32; font-size: 32px; font-weight: bold; }
         .action-btn { background: #4caf50; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px; }
-        .danger-btn { background: #f44336 !important; }
+        .danger-btn { background: #f44336 !important; margin-left: 5px; }
         .active-btn { background: #2196f3 !important; }
         .upload-box { border: 2px dashed #b39ddb; padding: 30px; text-align: center; border-radius: 10px; background: #f9f7fc; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -34,7 +34,7 @@
         .qr-block-row { background: #f9f9f9; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0; }
         .qr-flex-container { display: flex; gap: 25px; flex-wrap: wrap; margin-top: 15px; justify-content: center; }
         .qr-box { display: flex; flex-direction: column; align-items: center; gap: 12px; background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd; width: 180px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
-        .qr-box canvas { display: block; }
+        .qr-box div { display: block; margin: 0 auto; width: 130px; height: 130px; }
     </style>
 </head>
 <body>
@@ -89,9 +89,9 @@
 
         <h3 style="margin-top:40px;">Your Uploaded Games</h3>
         <table>
-            <thead><tr><th>Game ID</th><th>File Title</th><th>Uploaded At</th><th>Status Actions</th></tr></thead>
+            <thead><tr><th>Game ID</th><th>File Title</th><th>Uploaded At</th><th>Status Actions</th><th>Management Operations</th></tr></thead>
             <tbody id="games-table-body">
-                <tr><td colspan="4">No game files imported yet.</td></tr>
+                <tr><td colspan="5">No game files imported yet.</td></tr>
             </tbody>
         </table>
     </div>
@@ -104,13 +104,19 @@
 
         <div class="qr-section-wrapper">
             <div class="qr-block-row">
-                <h3 style="margin:0 0 10px 0; color:#4a148c;">System Registration Target (Global Static)</h3>
-                <p style="margin:0; font-size:14px; color:#666;">This stays the same across all games. Place this at your starting area for new team registration.</p>
+                <h3 style="margin:0 0 10px 0; color:#4a148c;">System Access Targets (Global Permanent)</h3>
+                <p style="margin:0; font-size:14px; color:#666;">These stay the same across all game files. Post them near entry points for player device routing.</p>
+                
                 <div class="qr-flex-container">
                     <div class="qr-box">
-                        <h4>Create Team Passport</h4>
+                        <h4>1. Home Login Portal</h4>
+                        <div id="global-home-qr"></div>
+                        <small style="word-break: break-all;">Brings users to Homepage URL</small>
+                    </div>
+                    <div class="qr-box">
+                        <h4>2. Create Team Passport</h4>
                         <div id="global-reg-qr"></div>
-                        <small>Value: SCOUT_CREATION_PASSPORT</small>
+                        <small>Direct New Registration Bypass</small>
                     </div>
                 </div>
             </div>
@@ -125,9 +131,10 @@
 
     <script>
         const BACKEND_URL = 'https://scouts-backend-24lj.onrender.com';
+        // Dynamically detects your current host location URL to assign code mapping parameters
+        const HOMEPAGE_URL = window.location.origin + window.location.pathname.replace('host-dashboard.html', 'index.html');
+        
         let activeGameStations = []; 
-        let globalRegQrObj = null;
-        let stationQrObjects = [];
 
         function tab(name) {
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -137,7 +144,7 @@
             if(name === 'home') loadStats();
             if(name === 'logs') loadTeamsTable();
             if(name === 'uploads') loadGamesTable();
-            if(name === 'qr') renderGlobalQR();
+            if(name === 'qr') renderGlobalQRs();
         }
 
         function loadStats() {
@@ -166,7 +173,7 @@
                                     <td><strong>${t.team_name}</strong></td>
                                     <td>${new Date(t.created_at).toLocaleDateString()}</td>
                                     <td>${t.scans_count || 0}</td>
-                                    <td><button class="action-btn danger-btn" style="padding: 6px 12px; font-size:13px;" onclick="deleteTeams(false, '${t.team_id}')">Remove</button></td>
+                                    <td><button class="action-btn danger-btn" style="padding: 6px 12px; font-size:13px; margin:0;" onclick="deleteTeams(false, '${t.team_id}')">Remove</button></td>
                                 </tr>`;
                         });
                     } else {
@@ -223,12 +230,15 @@
                                     <td>${g.filename}</td>
                                     <td>${new Date(g.created_at).toLocaleDateString()}</td>
                                     <td><button class="action-btn" ${btnAttrs}>${btnText}</button></td>
+                                    <td><button class="action-btn danger-btn" style="padding: 6px 12px; font-size:13px; margin:0;" onclick="deleteGameFile('${g.id}')">🗑️ Delete</button></td>
                                 </tr>`;
                             if(g.is_active) {
                                 activeGameStations = g.stations_json || [];
                                 renderStationQRGrid();
                             }
                         });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="5">No game files imported yet.</td></tr>';
                     }
                 });
         }
@@ -243,24 +253,34 @@
             .then(data => { if(data.success) loadGamesTable(); });
         }
 
-        function renderGlobalQR() {
-            const container = document.getElementById('global-reg-qr');
-            if (container.children.length === 0) {
-                globalRegQrObj = new QRCode(container, {
-                    text: "SCOUT_CREATION_PASSPORT",
-                    width: 130,
-                    height: 130
-                });
+        function deleteGameFile(id) {
+            if(!confirm("Are you sure you want to completely erase this game layout spreadsheet file row?")) return;
+            fetch(`${BACKEND_URL}/api/host/games/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: Number(id) })
+            })
+            .then(res => res.json())
+            .then(data => { if(data.success) loadGamesTable(); });
+        }
+
+        function renderGlobalQRs() {
+            const homeContainer = document.getElementById('global-home-qr');
+            const regContainer = document.getElementById('global-reg-qr');
+            
+            if (homeContainer.children.length === 0) {
+                new QRCode(homeContainer, { text: HOMEPAGE_URL, width: 130, height: 130 });
+            }
+            if (regContainer.children.length === 0) {
+                new QRCode(regContainer, { text: "SCOUT_CREATION_PASSPORT", width: 130, height: 130 });
             }
         }
 
         function renderStationQRGrid() {
             const container = document.getElementById('qr-matrix-container');
             container.innerHTML = '';
-            stationQrObjects = [];
             
             if(activeGameStations.length === 0) return;
-            
             document.getElementById('active-game-banner').style.display = 'none';
 
             activeGameStations.forEach((st, idx) => {
@@ -269,12 +289,11 @@
                 box.innerHTML = `<h4>Station Post ${st.PostNo || idx+1}</h4><div id="station-qr-${idx}"></div><small>${st.PostLocation || 'Game Coordinate'}</small>`;
                 container.appendChild(box);
 
-                let qrObj = new QRCode(document.getElementById(`station-qr-${idx}`), {
+                new QRCode(document.getElementById(`station-qr-${idx}`), {
                     text: `SCOUT_STATION_ID_${st.PostNo || idx+1}`,
                     width: 130,
                     height: 130
                 });
-                stationQrObjects.push({ obj: qrObj, info: st, index: idx });
             });
         }
 
@@ -292,44 +311,38 @@
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF();
             
-            // 1. PAGE 1: Global Registration Passport
             pdf.setFont("Helvetica", "bold");
             pdf.setFontSize(22);
-            pdf.text("Scout Scavenger Hunt Setup Manifest", 20, 30);
+            pdf.text("Scout Scavenger Hunt Setup Manifest", 20, 25);
             
             pdf.setFontSize(14);
-            pdf.text("1. Team Registration Passport (Permanent Master)", 20, 50);
+            pdf.text("1. System Access Targets (Global Permanent Links)", 20, 42);
+            
             pdf.setFont("Helvetica", "normal");
-            pdf.setFontSize(11);
-            pdf.text("Place this code block explicitly at your main base encampment checkpoint.", 20, 58);
-            pdf.text("System Routing URL String Payload: SCOUT_CREATION_PASSPORT", 20, 64);
-            
-            const regImg = getQrBase64Image('global-reg-qr');
-            if (regImg) {
-                pdf.addImage(regImg, 'PNG', 20, 72, 50, 50);
-            } else {
-                pdf.text("[QR Render Delay: Refresh screen and retry]", 20, 80);
-            }
-            
-            pdf.line(20, 135, 190, 135);
+            pdf.setFontSize(10);
+            pdf.text(`1A. Portal Access Link URL: ${HOMEPAGE_URL}`, 20, 50);
+            const homeImg = getQrBase64Image('global-home-qr');
+            if (homeImg) pdf.addImage(homeImg, 'PNG', 20, 54, 35, 35);
 
-            // 2. Dynamic Station Checkpoint Targets Routing
+            pdf.text("1B. New Registration Key Checkpoint Code: SCOUT_CREATION_PASSPORT", 95, 50);
+            const regImg = getQrBase64Image('global-reg-qr');
+            if (regImg) pdf.addImage(regImg, 'PNG', 95, 54, 35, 35);
+            
+            pdf.line(20, 98, 190, 98);
+
             pdf.setFont("Helvetica", "bold");
             pdf.setFontSize(14);
-            pdf.text("2. Active Game Station Node Targets", 20, 148);
+            pdf.text("2. Dynamic Game Station Node Targets Matrix", 20, 108);
             
-            let yOffset = 160;
+            let yOffset = 118;
             
             if (activeGameStations.length === 0) {
                 pdf.setFont("Helvetica", "italic");
                 pdf.setFontSize(11);
-                pdf.text("No dynamic game config uploaded or set active yet.", 20, yOffset);
+                pdf.text("No dynamic game config spreadsheet selected yet.", 20, yOffset);
             } else {
                 activeGameStations.forEach((st, idx) => {
-                    if (yOffset > 220) { 
-                        pdf.addPage(); 
-                        yOffset = 30; 
-                    }
+                    if (yOffset > 240) { pdf.addPage(); yOffset = 25; }
                     
                     pdf.setFont("Helvetica", "bold");
                     pdf.setFontSize(12);
@@ -341,19 +354,17 @@
                     pdf.text(`System ID Value Match Data: SCOUT_STATION_ID_${st.PostNo || idx+1}`, 20, yOffset + 12);
                     
                     const stImg = getQrBase64Image(`station-qr-${idx}`);
-                    if (stImg) {
-                        pdf.addImage(stImg, 'PNG', 145, yOffset - 4, 32, 32);
-                    }
+                    if (stImg) pdf.addImage(stImg, 'PNG', 145, yOffset - 4, 32, 32);
                     
                     pdf.line(20, yOffset + 32, 190, yOffset + 32);
                     yOffset += 42;
                 });
             }
             
-            pdf.save("ScoutGame_EventMaster_WithQRs.pdf");
+            pdf.save("ScoutGame_CompleteMaster_Manifest.pdf");
         }
 
-        window.onload = function() { loadStats(); renderGlobalQR(); };
+        window.onload = function() { loadStats(); renderGlobalQRs(); };
     </script>
 </body>
 </html>
