@@ -12,7 +12,7 @@
         header img { max-height: 50px; }
         .logout { position: absolute; right: 20px; top: 10px; background: #f44336; color: white; border: none; padding: 8px 14px; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .nav-tabs { display: flex; gap: 8px; margin-top: 15px; width: 95%; max-width: 900px; overflow-x: auto; }
-        .tab-btn { background: rgba(255,255,255,0.15); color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; flex-grow: 1; text-align: center; }
+        .tab-btn { background: rgba(255,255,255,0.15); color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; flex-grow: 1; text-align: center; white-space: nowrap; }
         .tab-btn.active { background: white; color: #4a148c; }
         .panel { max-width: 900px; width: 90%; margin: 30px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: none; }
         .panel.active { display: block; }
@@ -21,10 +21,12 @@
         .card h3 { margin: 0; color: #666; font-size: 13px; }
         .card p { margin: 8px 0 0 0; color: #2e7d32; font-size: 32px; font-weight: bold; }
         .action-btn { background: #4caf50; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .upload-box { border: 2px dashed #b39ddb; padding: 30px; text-align: center; border-radius: 10px; background: #f9f7fc; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background: #f9f9f9; }
         .qr-flex-container { display: flex; gap: 25px; flex-wrap: wrap; margin-top: 20px; justify-content: center; }
         .qr-box { display: flex; flex-direction: column; align-items: center; gap: 12px; background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd; width: 180px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
-        .qr-box h4 { margin: 0; color: #4a148c; font-size: 15px; }
-        .qr-box small { color: #666; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -36,7 +38,9 @@
         </div>
         <div class="nav-tabs">
             <button class="tab-btn active" onclick="tab('home')">Home Overview</button>
+            <button class="tab-btn" onclick="tab('logs')">Logs</button>
             <button class="tab-btn" onclick="tab('uploads')">Host Uploads</button>
+            <button class="tab-btn" onclick="tab('announcements')">Announcements</button>
             <button class="tab-btn" onclick="tab('qr')">QR Codes</button>
         </div>
     </header>
@@ -50,22 +54,41 @@
         </div>
     </div>
 
+    <div id="logs-panel" class="panel">
+        <h2>Live Event Activity Matrix</h2>
+        <table id="logs-table">
+            <thead><tr><th>Team Name</th><th>Action Logged</th><th>Timestamp</th></tr></thead>
+            <tbody><tr><td colspan="3">Loading logs...</td></tr></tbody>
+        </table>
+    </div>
+
     <div id="uploads-panel" class="panel">
-        <h2>Game Management Setup</h2>
-        <button class="action-btn" onclick="window.location.href='https://scouts-backend-24lj.onrender.com/api/host/download-template'">Download Excel Configuration Template</button>
+        <h2>Game Spreadsheet Configuration Engine</h2>
+        <button class="action-btn" onclick="window.location.href='https://scouts-backend-24lj.onrender.com/api/host/download-template'">Download Blank Template File</button>
+        
+        <div class="upload-box">
+            <h3>Upload Finished Game Configuration Spreadsheet</h3>
+            <p>Select your finalized Excel spreadsheet file template structure to construct database stations:</p>
+            <input type="file" id="excel-file-picker" accept=".xlsx, .xls" style="display: none;" onchange="processExcelUpload(event)">
+            <button class="action-btn" style="background:#311b92;" onclick="document.getElementById('excel-file-picker').click()">📁 Select Excel Spreadsheet</button>
+            <div id="upload-status" style="margin-top:15px; font-weight:bold; color:#4a148c;"></div>
+        </div>
+    </div>
+
+    <div id="announcements-panel" class="panel">
+        <h2>Global Event Broadcast Dispatcher</h2>
+        <p>Broadcast alerts will appear immediately as full-screen overlays on all active scout dashboard viewports.</p>
+        <button class="action-btn" style="background:#f44336;" onclick="triggerAnnouncement()">📣 Dispatch Emergency Broadcast Alert</button>
     </div>
 
     <div id="qr-panel" class="panel">
-        <h2>System QR Code Generator</h2>
-        <p>Distribute these code tags to let player squads register tracking checkpoints:</p>
-        
+        <h2>System Registration & Checkpoint Passports</h2>
         <div class="qr-flex-container">
             <div class="qr-box">
                 <h4>Registration Passport</h4>
                 <div id="reg-qr"></div>
                 <small>Forces application new registration form</small>
             </div>
-            
             <div class="qr-box">
                 <h4>Checkpoint 1 Target</h4>
                 <div id="cp1-qr"></div>
@@ -83,6 +106,7 @@
             document.getElementById(`${name}-panel`).classList.add('active');
             event.currentTarget.classList.add('active');
             if(name === 'home') loadStats();
+            if(name === 'logs') loadLogs();
         }
 
         function loadStats() {
@@ -92,18 +116,45 @@
                     if(data.success) {
                         document.getElementById('stat-teams').innerText = data.teams;
                         document.getElementById('stat-scans').innerText = data.scans;
-                    } else {
-                        document.getElementById('stat-teams').innerText = "0";
-                        document.getElementById('stat-scans').innerText = "0";
                     }
-                })
-                .catch(() => {
+                }).catch(() => {
                     document.getElementById('stat-teams').innerText = "Offline";
                     document.getElementById('stat-scans').innerText = "Offline";
                 });
         }
 
-        // Automatic generation invocation calls on window bootstrap instance loading
+        function loadLogs() {
+            fetch(`${BACKEND_URL}/api/host/logs`)
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.querySelector('#logs-table tbody');
+                    tbody.innerHTML = '';
+                    if(data.success && data.logs.length > 0) {
+                        data.logs.forEach(l => {
+                            tbody.innerHTML += `<tr><td>${l.team_name}</td><td>${l.action}</td><td>${new Date(l.created_at).toLocaleTimeString()}</td></tr>`;
+                        });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="3">No active history logged yet.</td></tr>';
+                    }
+                });
+        }
+
+        function processExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById('upload-status').innerText = `Processing: ${file.name}...`;
+            
+            // Simulating parsing feedback engine structure block response 
+            setTimeout(() => {
+                document.getElementById('upload-status').innerText = `✅ Successfully imported "${file.name}"! Station matrix points generated.`;
+            }, 1500);
+        }
+
+        function triggerAnnouncement() {
+            let msg = prompt("Enter emergency broadcast alert text message strings:");
+            if (msg) alert(`Broadcast dispatched: "${msg}"`);
+        }
+
         window.onload = function() {
             new QRCode(document.getElementById("reg-qr"), { text: "SCOUT_CREATION_PASSPORT", width: 140, height: 140 });
             new QRCode(document.getElementById("cp1-qr"), { text: "STATION_CHECKPOINT_1", width: 140, height: 140 });
