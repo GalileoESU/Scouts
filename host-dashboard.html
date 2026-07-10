@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Organizer Panel</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding-bottom: 40px; }
         header { width: 100%; background-color: #4a148c; display: flex; flex-direction: column; align-items: center; padding: 15px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
@@ -21,10 +22,14 @@
         .card h3 { margin: 0; color: #666; font-size: 13px; }
         .card p { margin: 8px 0 0 0; color: #2e7d32; font-size: 32px; font-weight: bold; }
         .action-btn { background: #4caf50; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .danger-btn { background: #f44336 !important; }
+        .active-btn { background: #2196f3 !important; }
         .upload-box { border: 2px dashed #b39ddb; padding: 30px; text-align: center; border-radius: 10px; background: #f9f7fc; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
         th { background: #f9f9f9; }
+        .heading-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .heading-flex h2 { margin: 0; }
         .qr-flex-container { display: flex; gap: 25px; flex-wrap: wrap; margin-top: 20px; justify-content: center; }
         .qr-box { display: flex; flex-direction: column; align-items: center; gap: 12px; background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd; width: 180px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
     </style>
@@ -38,9 +43,8 @@
         </div>
         <div class="nav-tabs">
             <button class="tab-btn active" onclick="tab('home')">Home Overview</button>
-            <button class="tab-btn" onclick="tab('logs')">Logs</button>
+            <button class="tab-btn" onclick="tab('logs')">Logs & Management</button>
             <button class="tab-btn" onclick="tab('uploads')">Host Uploads</button>
-            <button class="tab-btn" onclick="tab('announcements')">Announcements</button>
             <button class="tab-btn" onclick="tab('qr')">QR Codes</button>
         </div>
     </header>
@@ -55,10 +59,17 @@
     </div>
 
     <div id="logs-panel" class="panel">
-        <h2>Live Event Activity Matrix</h2>
-        <table id="logs-table">
-            <thead><tr><th>Team Name</th><th>Action Logged</th><th>Timestamp</th></tr></thead>
-            <tbody><tr><td colspan="3">Loading logs...</td></tr></tbody>
+        <div class="heading-flex">
+            <h2>Active Registered Teams</h2>
+            <button class="action-btn danger-btn" onclick="deleteTeams(true)">⚠️ Delete All Teams</button>
+        </div>
+        <table>
+            <thead>
+                <tr><th>Team ID</th><th>Team Username</th><th>Date Registered</th><th>Checkpoints Scanned</th><th>Operations</th></tr>
+            </thead>
+            <tbody id="teams-table-body">
+                <tr><td colspan="5">Loading real-time roster matrix...</td></tr>
+            </tbody>
         </table>
     </div>
 
@@ -67,38 +78,34 @@
         <button class="action-btn" onclick="window.location.href='https://scouts-backend-24lj.onrender.com/api/host/download-template'">Download Blank Template File</button>
         
         <div class="upload-box">
-            <h3>Upload Finished Game Configuration Spreadsheet</h3>
-            <p>Select your finalized Excel spreadsheet file template structure to construct database stations:</p>
+            <h3>Upload Game Configuration Spreadsheet</h3>
             <input type="file" id="excel-file-picker" accept=".xlsx, .xls" style="display: none;" onchange="processExcelUpload(event)">
             <button class="action-btn" style="background:#311b92;" onclick="document.getElementById('excel-file-picker').click()">📁 Select Excel Spreadsheet</button>
             <div id="upload-status" style="margin-top:15px; font-weight:bold; color:#4a148c;"></div>
         </div>
-    </div>
 
-    <div id="announcements-panel" class="panel">
-        <h2>Global Event Broadcast Dispatcher</h2>
-        <p>Broadcast alerts will appear immediately as full-screen overlays on all active scout dashboard viewports.</p>
-        <button class="action-btn" style="background:#f44336;" onclick="triggerAnnouncement()">📣 Dispatch Emergency Broadcast Alert</button>
+        <h3 style="margin-top:40px;">Your Uploaded Games</h3>
+        <table>
+            <thead><tr><th>Game ID</th><th>File Title</th><th>Uploaded At</th><th>Status Actions</th></tr></thead>
+            <tbody id="games-table-body">
+                <tr><td colspan="4">No game files imported yet.</td></tr>
+            </tbody>
+        </table>
     </div>
 
     <div id="qr-panel" class="panel">
-        <h2>System Registration & Checkpoint Passports</h2>
-        <div class="qr-flex-container">
-            <div class="qr-box">
-                <h4>Registration Passport</h4>
-                <div id="reg-qr"></div>
-                <small>Forces application new registration form</small>
-            </div>
-            <div class="qr-box">
-                <h4>Checkpoint 1 Target</h4>
-                <div id="cp1-qr"></div>
-                <small>Logs verification score stamp at base 1</small>
-            </div>
+        <div class="heading-flex">
+            <h2>Dynamic Game Checkpoint Passports</h2>
+            <button class="action-btn active-btn" id="pdf-btn" onclick="downloadQRpdf()" disabled>📥 Download All Cards PDF</button>
         </div>
+        <p id="active-game-banner" style="color: #666; font-style: italic;">Select and activate a game configuration file inside the 'Host Uploads' panel to see checkpoint passport arrays.</p>
+        
+        <div class="qr-flex-container" id="qr-matrix-container"></div>
     </div>
 
     <script>
         const BACKEND_URL = 'https://scouts-backend-24lj.onrender.com';
+        let activeGameStations = []; 
 
         function tab(name) {
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -106,7 +113,8 @@
             document.getElementById(`${name}-panel`).classList.add('active');
             event.currentTarget.classList.add('active');
             if(name === 'home') loadStats();
-            if(name === 'logs') loadLogs();
+            if(name === 'logs') loadTeamsTable();
+            if(name === 'uploads') loadGamesTable();
         }
 
         function loadStats() {
@@ -117,49 +125,144 @@
                         document.getElementById('stat-teams').innerText = data.teams;
                         document.getElementById('stat-scans').innerText = data.scans;
                     }
-                }).catch(() => {
-                    document.getElementById('stat-teams').innerText = "Offline";
-                    document.getElementById('stat-scans').innerText = "Offline";
                 });
         }
 
-        function loadLogs() {
-            fetch(`${BACKEND_URL}/api/host/logs`)
+        function loadTeamsTable() {
+            fetch(`${BACKEND_URL}/api/host/teams`)
                 .then(res => res.json())
                 .then(data => {
-                    const tbody = document.querySelector('#logs-table tbody');
+                    const tbody = document.getElementById('teams-table-body');
                     tbody.innerHTML = '';
-                    if(data.success && data.logs.length > 0) {
-                        data.logs.forEach(l => {
-                            tbody.innerHTML += `<tr><td>${l.team_name}</td><td>${l.action}</td><td>${new Date(l.created_at).toLocaleTimeString()}</td></tr>`;
+                    if(data.success && data.teams.length > 0) {
+                        data.teams.forEach(t => {
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>${t.team_id}</td>
+                                    <td><strong>${t.team_name}</strong></td>
+                                    <td>${new Date(t.created_at).toLocaleDateString()}</td>
+                                    <td>${t.scans_count || 0}</td>
+                                    <td><button class="action-btn danger-btn" style="padding: 6px 12px; font-size:13px;" onclick="deleteTeams(false, '${t.team_id}')">Remove</button></td>
+                                </tr>`;
                         });
                     } else {
-                        tbody.innerHTML = '<tr><td colspan="3">No active history logged yet.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="5">No active teams currently registered.</td></tr>';
                     }
                 });
+        }
+
+        function deleteTeams(all, teamId = null) {
+            if(!confirm(all ? "Are you sure you want to completely wipe out ALL teams?" : "Remove this specific team record?")) return;
+            
+            fetch(`${BACKEND_URL}/api/host/teams/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ all, teamId })
+            })
+            .then(res => res.json())
+            .then(data => { if(data.success) loadTeamsTable(); });
         }
 
         function processExcelUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-            document.getElementById('upload-status').innerText = `Processing: ${file.name}...`;
             
-            // Simulating parsing feedback engine structure block response 
-            setTimeout(() => {
-                document.getElementById('upload-status').innerText = `✅ Successfully imported "${file.name}"! Station matrix points generated.`;
-            }, 1500);
+            const formData = new FormData();
+            formData.append('gameFile', file);
+
+            fetch(`${BACKEND_URL}/api/host/upload-game`, { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        loadGamesTable();
+                        document.getElementById('upload-status').innerText = `✅ Successfully imported "${file.name}"!`;
+                    }
+                });
         }
 
-        function triggerAnnouncement() {
-            let msg = prompt("Enter emergency broadcast alert text message strings:");
-            if (msg) alert(`Broadcast dispatched: "${msg}"`);
+        function loadGamesTable() {
+            fetch(`${BACKEND_URL}/api/host/games`)
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.getElementById('games-table-body');
+                    tbody.innerHTML = '';
+                    if(data.success && data.games.length > 0) {
+                        data.games.forEach(g => {
+                            const btnText = g.is_active ? "🟢 Active State" : "Set Active";
+                            const btnAttrs = g.is_active ? "disabled style='background:#4caf50;'" : `onclick="setActiveGame('${g.id}')"`;
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>${g.id}</td>
+                                    <td>${g.filename}</td>
+                                    <td>${new Date(g.created_at).toLocaleDateString()}</td>
+                                    <td><button class="action-btn" ${btnAttrs}>${btnText}</button></td>
+                                </tr>`;
+                            if(g.is_active) {
+                                activeGameStations = g.stations_json || [];
+                                renderStationQRGrid();
+                            }
+                        });
+                    }
+                });
         }
 
-        window.onload = function() {
-            new QRCode(document.getElementById("reg-qr"), { text: "SCOUT_CREATION_PASSPORT", width: 140, height: 140 });
-            new QRCode(document.getElementById("cp1-qr"), { text: "STATION_CHECKPOINT_1", width: 140, height: 140 });
-            loadStats();
-        };
+        function setActiveGame(id) {
+            fetch(`${BACKEND_URL}/api/host/games/activate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            })
+            .then(res => res.json())
+            .then(data => { if(data.success) loadGamesTable(); });
+        }
+
+        function renderStationQRGrid() {
+            const container = document.getElementById('qr-matrix-container');
+            container.innerHTML = '';
+            
+            if(activeGameStations.length === 0) return;
+            
+            document.getElementById('active-game-banner').style.display = 'none';
+            document.getElementById('pdf-btn').removeAttribute('disabled');
+
+            activeGameStations.forEach((st, idx) => {
+                const box = document.createElement('div');
+                box.className = 'qr-box';
+                box.innerHTML = `<h4>Station Post ${st.PostNo || idx+1}</h4><div id="station-qr-${idx}"></div><small>${st.PostLocation || 'Game Coordinate'}</small>`;
+                container.appendChild(box);
+
+                new QRCode(document.getElementById(`station-qr-${idx}`), {
+                    text: `SCOUT_STATION_ID_${st.PostNo || idx+1}`,
+                    width: 130,
+                    height: 130
+                });
+            });
+        }
+
+        function downloadQRpdf() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            pdf.setFont("Helvetica", "bold");
+            
+            pdf.text("Game Station QR Target Passports Grid", 20, 20);
+            pdf.setFontSize(11);
+            
+            let yOffset = 40;
+            activeGameStations.forEach((st, idx) => {
+                if (yOffset > 240) { pdf.addPage(); yOffset = 30; }
+                
+                pdf.text(`Station Checkpoint Post Number: ${st.PostNo || idx+1}`, 20, yOffset);
+                pdf.text(`Target Marker Info Location: ${st.PostLocation || 'Unassigned Field Location'}`, 20, yOffset + 6);
+                pdf.text(`Data Routing System ID Payload: SCOUT_STATION_ID_${st.PostNo || idx+1}`, 20, yOffset + 12);
+                pdf.line(20, yOffset + 18, 190, yOffset + 18);
+                
+                yOffset += 30;
+            });
+            
+            pdf.save("ScoutGame_Checkpoints_Passport_Manifest.pdf");
+        }
+
+        window.onload = function() { loadStats(); };
     </script>
 </body>
 </html>
