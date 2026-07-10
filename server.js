@@ -42,7 +42,7 @@ app.post('/api/host/upload-game', upload.single('gameFile'), async (req, res) =>
         if (error) throw error;
         return res.json({ success: true });
     } catch (err) {
-        return res.status(500).json({ success: false, error: err.message });
+        return res.status(500).json({ success: false, message: err.message });
     }
 });
 
@@ -52,11 +52,20 @@ app.get('/api/host/games', async (req, res) => {
     return res.json({ success: true, games: data || [] });
 });
 
-app.post('/api/games/activate', async (req, res) => {
+app.post('/api/host/games/activate', async (req, res) => {
     const { id } = req.body;
-    await supabase.from('games').update({ is_active: false }).neq('id', id);
-    await supabase.from('games').update({ is_active: true }).eq('id', id);
-    return res.json({ success: true });
+    try {
+        // Step 1: Explicitly clear active states from all files safely
+        await supabase.from('games').update({ is_active: false }).neq('id', 0);
+        
+        // Step 2: Set the exact row match to true using numerical ID parameters
+        const { error } = await supabase.from('games').update({ is_active: true }).eq('id', id);
+        
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 // --- REAL-TIME TEAM LIST AND STATS ---
@@ -66,20 +75,28 @@ app.get('/api/host/teams', async (req, res) => {
 });
 
 app.get('/api/host/stats', async (req, res) => {
-    const { count: teamCount } = await supabase.from('teams').select('*', { count: 'exact', head: true });
-    const { count: scanCount } = await supabase.from('logs').select('*', { count: 'exact', head: true });
-    return res.json({ success: true, teams: teamCount || 0, scans: scanCount || 0 });
+    try {
+        const { count: teamCount } = await supabase.from('teams').select('*', { count: 'exact', head: true });
+        const { count: scanCount } = await supabase.from('logs').select('*', { count: 'exact', head: true });
+        return res.json({ success: true, teams: teamCount || 0, scans: scanCount || 0 });
+    } catch (err) {
+        return res.json({ success: true, teams: 0, scans: 0 });
+    }
 });
 
 // --- DYNAMIC PURGE LOGIC OPERATIONS ---
 app.post('/api/host/teams/delete', async (req, res) => {
     const { all, teamId } = req.body;
-    if (all) {
-        await supabase.from('teams').delete().neq('team_id', '000');
-    } else {
-        await supabase.from('teams').delete().eq('team_id', teamId);
+    try {
+        if (all) {
+            await supabase.from('teams').delete().neq('team_id', '000');
+        } else {
+            await supabase.from('teams').delete().eq('team_id', teamId);
+        }
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
     }
-    return res.json({ success: true });
 });
 
 // --- PROCEDURAL REGISTRATION CODES ---

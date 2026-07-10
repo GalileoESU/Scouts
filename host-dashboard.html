@@ -68,7 +68,7 @@
                 <tr><th>Team ID</th><th>Team Username</th><th>Date Registered</th><th>Checkpoints Scanned</th><th>Operations</th></tr>
             </thead>
             <tbody id="teams-table-body">
-                <tr><td colspan="5">Loading real-time roster matrix...</td></tr>
+                <tr><td colspan="5">Loading live rosters...</td></tr>
             </tbody>
         </table>
     </div>
@@ -121,10 +121,11 @@
             fetch(`${BACKEND_URL}/api/host/stats`)
                 .then(res => res.json())
                 .then(data => {
-                    if(data.success) {
-                        document.getElementById('stat-teams').innerText = data.teams;
-                        document.getElementById('stat-scans').innerText = data.scans;
-                    }
+                    document.getElementById('stat-teams').innerText = data.teams;
+                    document.getElementById('stat-scans').innerText = data.scans;
+                }).catch(() => {
+                    document.getElementById('stat-teams').innerText = "0";
+                    document.getElementById('stat-scans').innerText = "0";
                 });
         }
 
@@ -152,7 +153,7 @@
         }
 
         function deleteTeams(all, teamId = null) {
-            if(!confirm(all ? "Are you sure you want to completely wipe out ALL teams?" : "Remove this specific team record?")) return;
+            if(!confirm(all ? "Wipe out ALL teams?" : "Remove this specific team record?")) return;
             
             fetch(`${BACKEND_URL}/api/host/teams/delete`, {
                 method: 'POST',
@@ -167,6 +168,7 @@
             const file = event.target.files[0];
             if (!file) return;
             
+            document.getElementById('upload-status').innerText = `Uploading: ${file.name}...`;
             const formData = new FormData();
             formData.append('gameFile', file);
 
@@ -174,8 +176,10 @@
                 .then(res => res.json())
                 .then(data => {
                     if(data.success) {
+                        document.getElementById('upload-status').innerText = `✅ Imported "${file.name}"!`;
                         loadGamesTable();
-                        document.getElementById('upload-status').innerText = `✅ Successfully imported "${file.name}"!`;
+                    } else {
+                        document.getElementById('upload-status').innerText = `❌ Error: ${data.message}`;
                     }
                 });
         }
@@ -188,7 +192,7 @@
                     tbody.innerHTML = '';
                     if(data.success && data.games.length > 0) {
                         data.games.forEach(g => {
-                            const btnText = g.is_active ? "🟢 Active State" : "Set Active";
+                            const btnText = g.is_active ? "🟢 Active" : "Set Active";
                             const btnAttrs = g.is_active ? "disabled style='background:#4caf50;'" : `onclick="setActiveGame('${g.id}')"`;
                             tbody.innerHTML += `
                                 <tr>
@@ -210,7 +214,7 @@
             fetch(`${BACKEND_URL}/api/host/games/activate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id })
+                body: JSON.stringify({ id: Number(id) })
             })
             .then(res => res.json())
             .then(data => { if(data.success) loadGamesTable(); });
@@ -219,7 +223,6 @@
         function renderStationQRGrid() {
             const container = document.getElementById('qr-matrix-container');
             container.innerHTML = '';
-            
             if(activeGameStations.length === 0) return;
             
             document.getElementById('active-game-banner').style.display = 'none';
@@ -243,23 +246,18 @@
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF();
             pdf.setFont("Helvetica", "bold");
-            
             pdf.text("Game Station QR Target Passports Grid", 20, 20);
-            pdf.setFontSize(11);
             
             let yOffset = 40;
             activeGameStations.forEach((st, idx) => {
                 if (yOffset > 240) { pdf.addPage(); yOffset = 30; }
-                
                 pdf.text(`Station Checkpoint Post Number: ${st.PostNo || idx+1}`, 20, yOffset);
                 pdf.text(`Target Marker Info Location: ${st.PostLocation || 'Unassigned Field Location'}`, 20, yOffset + 6);
                 pdf.text(`Data Routing System ID Payload: SCOUT_STATION_ID_${st.PostNo || idx+1}`, 20, yOffset + 12);
                 pdf.line(20, yOffset + 18, 190, yOffset + 18);
-                
                 yOffset += 30;
             });
-            
-            pdf.save("ScoutGame_Checkpoints_Passport_Manifest.pdf");
+            pdf.save("ScoutGame_Checkpoints_Manifest.pdf");
         }
 
         window.onload = function() { loadStats(); };

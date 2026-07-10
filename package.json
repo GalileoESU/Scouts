@@ -1,15 +1,14 @@
 {
-  "name": "scouts-backend",
+  "name": "scout-hunt-backend",
   "version": "1.0.0",
-  "description": "Scout Scavenger Hunt Backend Engine",
+  "description": "Backend routing engine for the Scout Scavenger Hunt App",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "express": "^4.19.2",
-    "multer": "^1.4.5-lts.1",
+    "cors": "^2.8.5",
     "xlsx": "^0.18.5",
     "@supabase/supabase-js": "^2.43.4"
   }
