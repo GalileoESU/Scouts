@@ -3,112 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scout Scavenger Hunt</title>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    
+    <title>Scout Hunt Entry</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .container {
-            max-width: 400px;
-            width: 100%;
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            text-align: center;
-            box-sizing: border-box;
-        }
-        h1 { color: #2e7d32; margin-bottom: 5px; }
-        .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }
-        
-        /* The camera viewport box */
-        #reader {
-            width: 100%;
-            aspect-ratio: 1 / 1; /* Makes it a perfect square */
-            border: 2px solid #2e7d32;
-            border-radius: 10px;
-            overflow: hidden;
-            background: #000;
-        }
-        
-        #result-box {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #e8f5e9;
-            border: 1px solid #c8e6c9;
-            border-radius: 8px;
-            color: #2e7d32;
-            word-break: break-all;
-            display: none;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #311b92; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; box-sizing: border-box; }
+        header { width: 100%; background-color: #4a148c; display: flex; justify-content: center; align-items: center; padding: 15px 0; position: fixed; top: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        header img { max-height: 50px; }
+        .container { max-width: 400px; width: 90%; text-align: center; display: flex; flex-direction: column; gap: 15px; margin-top: 60px; }
+        h2 { color: white; margin: 0; }
+        .subtitle { color: #d1c4e9; margin-bottom: 20px; font-size: 15px; }
+        .btn-stacked { background-color: #eeeeee; color: #333; padding: 16px; border-radius: 8px; font-size: 18px; border: none; cursor: pointer; font-weight: bold; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .host-link { color: #ffca28; margin-top: 25px; text-decoration: none; font-size: 14px; font-weight: bold; }
     </style>
 </head>
 <body>
 
+    <header>
+        <img src="logo.png" alt="Scout Logo">
+    </header>
+
     <div class="container">
-        <h1>Scout Hunt</h1>
-        <p class="subtitle">Look around the area and scan the checkpoint QR codes!</p>
+        <h2>Scout Scavenger Hunt</h2>
+        <p class="subtitle">Welcome! Choose an option to begin registration or rejoin your patrol team.</p>
         
-        <div id="reader"></div>
+        <button class="btn-stacked" onclick="location.href='team-creation.html'">New Team</button>
+        <button class="btn-stacked" onclick="location.href='team-creation.html?type=rejoin'">Rejoin Team</button>
         
-        <div id="result-box">
-            <strong>Code Found!</strong><br>
-            <span id="scanned-text"></span><br>
-            <small id="scanned-time" style="color: #666;"></small>
-        </div>
+        <a href="host-login.html" class="host-link">Organizer Admin Portal →</a>
     </div>
 
-    <script>
-        // Create the scanner object tied to our 'reader' div
-        const html5QrCode = new Html5Qrcode("reader");
-
-        // What happens when a QR code is scanned successfully
-        function onScanSuccess(decodedText, decodedResult) {
-            if (navigator.vibrate) navigator.vibrate(100); // Quick phone buzz
-
-            document.getElementById('result-box').style.display = 'block';
-            document.getElementById('scanned-text').innerText = "Data: " + decodedText;
-            
-            const now = new Date();
-            document.getElementById('scanned-time').innerText = "Logged at: " + now.toLocaleString();
-
-            // Optional: Stop the camera after a successful scan so it doesn't loop scan
-            html5QrCode.stop().then((ignore) => {
-                console.log("Camera stopped after successful scan.");
-            }).catch((err) => {
-                console.error("Failed to stop camera.", err);
-            });
-        }
-
-        // Configuration for the camera view
-        const config = { 
-            fps: 10, 
-            qrbox: function(viewfinderWidth, viewfinderHeight) {
-                // Sets the scanning square size dynamically based on screen size
-                const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                const edgeSize = Math.floor(minEdge * 0.7);
-                return { width: edgeSize, height: edgeSize };
-            }
-        };
-
-        // RUN IMMEDIATELY: Start the camera using the environment (rear) lens
-        html5QrCode.start(
-            { facingMode: "environment" }, // Forces the main back camera
-            config, 
-            onScanSuccess
-        ).catch((err) => {
-            // Handle cases where permission is denied or camera is missing
-            console.error("Unable to start camera.", err);
-            alert("Camera initialization failed. Please make sure you grant camera access permissions!");
-        });
-    </script>
 </body>
 </html>

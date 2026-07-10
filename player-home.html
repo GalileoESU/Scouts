@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scout Hunt - Home</title>
+    <style>
+        /* Base Layout */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #311b92;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* Header Styling with Red Logout */
+        header {
+            width: 100%;
+            background-color: #4a148c;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        header img { max-height: 50px; }
+        
+        .logout-btn {
+            position: absolute;
+            right: 15px;
+            background-color: #f44336; /* Red Logout */
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        /* Main Content Container */
+        .container {
+            width: 90%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1; /* Takes up remaining vertical space */
+            padding: 20px 0;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            color: white;
+            margin: 0 0 20px 0;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        /* 4-Square Grid Layout */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Two equal columns */
+            grid-template-rows: 1fr 1fr;    /* Two equal rows */
+            gap: 15px;
+            flex-grow: 1; /* Forces grid to stretch to fill screen vertically */
+            margin-bottom: 20px;
+        }
+
+        /* Square Button Styling */
+        .grid-btn {
+            background-color: #ffffff;
+            color: #311b92;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .grid-btn:active {
+            transform: scale(0.95); /* Slight squish effect when tapped */
+            background-color: #eee;
+        }
+
+        /* Simple emoji icons for the buttons */
+        .btn-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <img src="logo.png" alt="Scout Logo">
+        <button class="logout-btn" onclick="handleLogout()">Log Out</button>
+    </header>
+
+    <div class="container">
+        <h2 id="welcome-message">Welcome, Team!</h2>
+        
+        <div class="grid-container">
+            <button class="grid-btn" onclick="navigateTo('scan')">
+                <span class="btn-icon">📷</span>
+                Scan QR
+            </button>
+            <button class="grid-btn" onclick="navigateTo('clues')">
+                <span class="btn-icon">💡</span>
+                Get Clues
+            </button>
+            <button class="grid-btn" onclick="navigateTo('logs')">
+                <span class="btn-icon">📜</span>
+                View Logs
+            </button>
+            <button class="grid-btn" onclick="navigateTo('contact')">
+                <span class="btn-icon">📞</span>
+                Contact Organizer
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Grab the team name out of the URL parameters to show a personalized greeting
+        const urlParams = new URLSearchParams(window.location.search);
+        const teamName = urlParams.get('team') || 'Scouts';
+        document.getElementById('welcome-message').innerText = `Welcome, ${decodeURIComponent(teamName)}!`;
+
+        function navigateTo(page) {
+            alert(`You clicked ${page}! We will build this screen soon.`);
+            // Future step: window.location.href = `player-${page}.html`;
+        }
+
+        function handleLogout() {
+            if (confirm("Are you sure you want to log out?")) {
+                // Take them back to the very first startup screen
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+</html>
