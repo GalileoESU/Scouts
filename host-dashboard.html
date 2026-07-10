@@ -35,6 +35,8 @@
         .qr-flex-container { display: flex; gap: 25px; flex-wrap: wrap; margin-top: 15px; justify-content: center; }
         .qr-box { display: flex; flex-direction: column; align-items: center; gap: 12px; background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd; width: 180px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
         .qr-box div { display: block; margin: 0 auto; width: 130px; height: 130px; }
+        .broadcast-container { background: #fff3e0; border: 1px solid #ffe0b2; padding: 20px; border-radius: 10px; margin-top: 20px; }
+        .broadcast-container textarea { width: 100%; height: 70px; border: 1px solid #ccc; border-radius: 6px; padding: 10px; box-sizing: border-box; resize: none; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -58,6 +60,14 @@
             <div class="card"><h3>Teams Created</h3><p id="stat-teams">Loading...</p></div>
             <div class="card"><h3>Clues Claimed</h3><p>0</p></div>
             <div class="card"><h3>Codes Scanned</h3><p id="stat-scans">Loading...</p></div>
+        </div>
+
+        <div class="broadcast-container">
+            <h3 style="margin:0; color:#e65100;">📢 Broadcast Host Announcement</h3>
+            <p style="margin:5px 0 0 0; font-size:13px; color:#666;">This updates instantly on active player dashboard feeds.</p>
+            <textarea id="announcement-msg" placeholder="Type event alert details here..."></textarea>
+            <button class="action-btn" style="background:#e65100; margin-top:10px;" onclick="postAnnouncement()">Send System Alert</button>
+            <div id="announcement-status" style="margin-top:10px; font-weight:bold; color: green;"></div>
         </div>
     </div>
 
@@ -131,7 +141,6 @@
 
     <script>
         const BACKEND_URL = 'https://scouts-backend-24lj.onrender.com';
-        // Dynamically detects your current host location URL to assign code mapping parameters
         const HOMEPAGE_URL = window.location.origin + window.location.pathname.replace('host-dashboard.html', 'index.html');
         
         let activeGameStations = []; 
@@ -157,6 +166,24 @@
                     document.getElementById('stat-teams').innerText = "0";
                     document.getElementById('stat-scans').innerText = "0";
                 });
+        }
+
+        function postAnnouncement() {
+            const text = document.getElementById('announcement-msg').value;
+            if(!text) return;
+            fetch(`${BACKEND_URL}/api/host/announcements`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('announcement-msg').value = '';
+                    document.getElementById('announcement-status').innerText = "📢 Broadcast Dispatched!";
+                    setTimeout(() => document.getElementById('announcement-status').innerText='', 3000);
+                }
+            });
         }
 
         function loadTeamsTable() {

@@ -95,8 +95,10 @@ app.post('/api/host/teams/delete', async (req, res) => {
     try {
         if (all) {
             await supabase.from('teams').delete().neq('team_id', '000');
+            await supabase.from('logs').delete().neq('id', 0);
         } else {
             await supabase.from('teams').delete().eq('team_id', teamId);
+            await supabase.from('logs').delete().eq('team_id', teamId);
         }
         return res.json({ success: true });
     } catch (err) {
@@ -104,13 +106,95 @@ app.post('/api/host/teams/delete', async (req, res) => {
     }
 });
 
-// --- CLEAN TRANSACTUAL TEAM CREATION ROUTING ---
+// --- ANNOUNCEMENTS BROADCAST SYSTEM ---
+app.post('/api/host/announcements', async (req, res) => {
+    const { text } = req.body;
+    try {
+        const { error } = await supabase.from('announcements').insert([{ text }]);
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.get('/api/team/announcements', async (req, res) => {
+    const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(5);
+    return res.json({ success: true, announcements: data || [] });
+});
+
+// --- SCANNING MATCH HANDLING & GAME PLAY ---
+app.post('/api/team/scan', async (req, res) => {
+    const { teamId, qrData } = req.body;
+    try {
+        // Step 1: Extract numeric post value sequence identifier format matching
+        const match = qrData.match(/SCOUT_STATION_ID_(\d+)/);
+        if (!match) return res.status(400).json({ success: false, message: "Invalid system routing payload string." });
+        
+        const stationNum = parseInt(match[1]);
+
+        // Step 2: Grab active game configuration array
+        const { data: activeGame } = await supabase.from('games').select('stations_json').eq('is_active', true).single();
+        if (!activeGame) return res.status(400).json({ success: false, message: "No game config active." });
+
+        const targetStation = activeGame.stations_json.find(st => parseInt(st.PostNo) === stationNum);
+        if (!targetStation) return res.status(404).json({ success: false, message: "Station match missing in configuration array." });
+
+        // Step 3: Check if checkpoint has been previously captured
+        const { data: existingLog } = await supabase.from('logs').select('*')
+            .eq('team_id', teamId).eq('post_no', stationNum).eq('action_type', 'SCAN').maybeSingle();
+
+        if (existingLog) {
+            return res.json({ success: true, message: "Station previously logged!", station: targetStation });
+        }
+
+        // Step 4: Write new row trace directly to database logs
+        await supabase.from('logs').insert([{
+            team_id: teamId,
+            post_no: stationNum,
+            action_type: 'SCAN',
+            details: `Scanned Checkpoint Station Post ${stationNum} at ${targetStation.PostLocation || 'Field Location'}`
+        }]);
+
+        // Increment counter on team record rows directly
+        const { data: teamData } = await supabase.from('teams').select('scans_count').eq('team_id', teamId).single();
+        const currentCount = teamData ? (teamData.scans_count || 0) : 0;
+        await supabase.from('teams').update({ scans_count: currentCount + 1 }).eq('team_id', teamId);
+
+        return res.json({ success: true, message: "New station scanned successfully!", station: targetStation });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/team/clue-log', async (req, res) => {
+    const { teamId, postNo, clueIndex } = req.body;
+    try {
+        await supabase.from('logs').insert([{
+            team_id: teamId,
+            post_no: parseInt(postNo),
+            action_type: 'CLUE',
+            details: `Requested Clue Variant #${clueIndex} for Station Post ${postNo}`
+        }]);
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ success: false });
+    }
+});
+
+app.get('/api/team/logs/:teamId', async (req, res) => {
+    const { teamId } = req.params;
+    const { data } = await supabase.from('logs').select('*').eq('team_id', teamId).order('created_at', { ascending: false });
+    return res.json({ success: true, logs: data || [] });
+});
+
+// --- SECURE PROCEDURAL TEAM CREATION ---
 app.post('/api/team/create', async (req, res) => {
     const { teamName, pin } = req.body;
     try {
         const calculatedId = String(Math.floor(Math.random() * 900) + 100);
         const { error } = await supabase.from('teams').insert([
-            { team_id: calculatedId, team_name: teamName, pin: pin }
+            { team_id: calculatedId, team_name: teamName, pin: pin, scans_count: 0 }
         ]);
         if (error) throw error;
         return res.json({ success: true, teamId: calculatedId });
