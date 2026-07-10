@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Organizer Panel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding-bottom: 40px; }
         header { width: 100%; background-color: #4a148c; display: flex; flex-direction: column; align-items: center; padding: 15px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
@@ -11,7 +12,7 @@
         header img { max-height: 50px; }
         .logout { position: absolute; right: 20px; top: 10px; background: #f44336; color: white; border: none; padding: 8px 14px; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .nav-tabs { display: flex; gap: 8px; margin-top: 15px; width: 95%; max-width: 900px; overflow-x: auto; }
-        .tab-btn { background: rgba(255,255,255,0.15); color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; flex-grow: 1; text-align: center; white-space: nowrap; }
+        .tab-btn { background: rgba(255,255,255,0.15); color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; flex-grow: 1; text-align: center; }
         .tab-btn.active { background: white; color: #4a148c; }
         .panel { max-width: 900px; width: 90%; margin: 30px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: none; }
         .panel.active { display: block; }
@@ -23,6 +24,7 @@
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
         th { background: #f9f9f9; }
+        .qr-box { display: flex; flex-direction: column; align-items: center; gap: 10px; background: #eee; padding: 20px; border-radius: 10px; max-width: 200px; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -36,7 +38,6 @@
             <button class="tab-btn active" onclick="tab('home')">Home Overview</button>
             <button class="tab-btn" onclick="tab('logs')">Logs</button>
             <button class="tab-btn" onclick="tab('uploads')">Host Uploads</button>
-            <button class="tab-btn" onclick="tab('announcements')">Announcements</button>
             <button class="tab-btn" onclick="tab('qr')">QR Codes</button>
         </div>
     </header>
@@ -44,63 +45,93 @@
     <div id="home-panel" class="panel active">
         <h2>Dashboard Snapshot</h2>
         <div class="stats-row">
-            <div class="card"><h3>Teams Created</h3><p>04</p></div>
-            <div class="card"><h3>Clues Claimed</h3><p>02</p></div>
-            <div class="card"><h3>Codes Scanned</h3><p>18</p></div>
+            <div class="card"><h3>Teams Created</h3><p id="stat-teams">0</p></div>
+            <div class="card"><h3>Clues Claimed</h3><p>0</p></div>
+            <div class="card"><h3>Codes Scanned</h3><p id="stat-scans">0</p></div>
         </div>
-        <button class="action-btn" onclick="tab('logs')">View Detailed Logs</button>
     </div>
 
     <div id="logs-panel" class="panel">
         <h2>Live Event Activity Matrix</h2>
-        <div style="overflow-x:auto;">
-            <table>
-                <thead>
-                    <tr><th>Team ID</th><th>Team Name</th><th>Date</th><th>Time</th><th style="width:20px;"></th><th>Scans</th><th>Clues Used</th><th>Points In</th><th>Points Out</th><th>Total Score</th></tr>
-                </thead>
-                <tbody>
-                    <tr><td>001</td><td>Stag Patrol</td><td>10/07/2026</td><td>12:04</td><td></td><td>4</td><td>0</td><td>40</td><td>0</td><td>40</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="uploads-panel" class="panel">
-        <h2>Saved Configured Games</h2>
-        <button class="action-btn" onclick="window.location.href='https://scouts-backend-24lj.onrender.com/api/host/download-template'">Download Excel Configuration Template</button>
-        <table>
-            <thead><tr><th>Game ID</th><th>Creation Timestamp</th><th>Status</th><th>Operation</th></tr></thead>
-            <tbody><tr><td>001</td><td>10/07/2026 09:15</td><td>Active</td><td><button disabled>Activated</button></td></tr></tbody>
+        <table id="logs-table">
+            <thead>
+                <tr><th>Team Name</th><th>Action Logged</th><th>Timestamp</th></tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="3">Loading real-time logs...</td></tr>
+            </tbody>
         </table>
     </div>
 
-    <div id="announcements-panel" class="panel">
-        <h2>Active Announcements</h2>
-        <button class="action-btn" onclick="triggerAnnouncement()">+ Dispatch New Broadcast</button>
+    <div id="uploads-panel" class="panel">
+        <h2>Game Management Setup</h2>
+        <button class="action-btn" onclick="window.location.href='https://scouts-backend-24lj.onrender.com/api/host/download-template'">Download Excel Configuration Template</button>
     </div>
 
     <div id="qr-panel" class="panel">
-        <h2>System Registration & Checkpoint Passports</h2>
-        <div style="display: flex; gap:10px;">
-            <button class="action-btn" style="background:#311b92;">Generate Team Creation QR</button>
-            <button class="action-btn">Download Game Checkpoint Vectors</button>
+        <h2>System QR Code Generator</h2>
+        <p>Distribute these codes to let players register or check into game targets:</p>
+        
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div class="qr-box">
+                <h4>Team Passport Code</h4>
+                <div id="reg-qr"></div>
+                <small>Scan to trigger New Team Registration</small>
+            </div>
+            
+            <div class="qr-box">
+                <h4>Station Checkpoint 1</h4>
+                <div id="cp1-qr"></div>
+                <small>Scan to log Checkpoint 1</small>
+            </div>
         </div>
     </div>
 
     <script>
+        const BACKEND_URL = 'https://scouts-backend-24lj.onrender.com';
+
         function tab(name) {
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(`${name}-panel`).classList.add('active');
             event.currentTarget.classList.add('active');
+            if(name === 'home') loadStats();
+            if(name === 'logs') loadLogs();
         }
 
-        function triggerAnnouncement() {
-            let msg = prompt("Enter broadcast string message text:");
-            if (msg && confirm(`Are you sure you want to broadcast: "${msg}"?`)) {
-                alert("Broadcast notification successfully sent out to all active player fields!");
-            }
+        function loadStats() {
+            fetch(`${BACKEND_URL}/api/host/stats`)
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        document.getElementById('stat-teams').innerText = data.teams;
+                        document.getElementById('stat-scans').innerText = data.scans;
+                    }
+                });
         }
+
+        function loadLogs() {
+            fetch(`${BACKEND_URL}/api/host/logs`)
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.querySelector('#logs-table tbody');
+                    tbody.innerHTML = '';
+                    if(data.success && data.logs.length > 0) {
+                        data.logs.forEach(l => {
+                            tbody.innerHTML += `<tr><td>${l.team_name}</td><td>${l.action}</td><td>${new Date(l.created_at).toLocaleTimeString()}</td></tr>`;
+                        });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="3">No live activity logged yet.</td></tr>';
+                    }
+                });
+        }
+
+        // Generate QR Codes inside the panel layout using system signatures
+        new QRCode(document.getElementById("reg-qr"), { text: "SCOUT_CREATION_PASSPORT", width: 128, height: 128 });
+        new QRCode(document.getElementById("cp1-qr"), { text: "STATION_CHECKPOINT_1", width: 128, height: 128 });
+
+        // Load statistics right when the panel boots up
+        loadStats();
     </script>
 </body>
 </html>
