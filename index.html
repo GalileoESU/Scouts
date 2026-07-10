@@ -6,71 +6,73 @@
     <title>Scout Entry Portal</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #e0f2f1; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .login-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 380px; text-align: center; }
-        h1 { color: #004d40; margin-bottom: 20px; font-size: 24px; }
-        .menu-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
-        .menu-card { background: #f1f8f6; border: 2px solid #b2dfdb; padding: 18px; border-radius: 8px; font-weight: bold; color: #004d40; cursor: pointer; font-size: 16px; transition: transform 0.2s; }
-        .menu-card:hover { transform: scale(1.02); background: #e0f2f1; }
+        body { font-family: 'Segoe UI', sans-serif; background: #4a148c; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; }
+        .login-card { background: white; padding: 35px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 360px; text-align: center; }
+        h1 { color: #4a148c; margin-bottom: 25px; font-size: 26px; font-weight: bold; }
+        .menu-grid { display: flex; flex-direction: column; gap: 15px; margin-top: 10px; }
+        .menu-card { background: #f3e5f5; border: 2px solid #ce93d8; padding: 20px; border-radius: 10px; font-weight: bold; color: #4a148c; cursor: pointer; font-size: 16px; transition: transform 0.2s, background 0.2s; }
+        .menu-card:hover { transform: scale(1.02); background: #e1bee7; }
         .input-group { margin-bottom: 15px; text-align: left; }
         label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
-        input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
-        .action-btn { background: #00796b; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; }
-        .back-link { margin-top: 15px; display: inline-block; font-size: 13px; color: #00796b; cursor: pointer; text-decoration: underline; }
-        .feedback-msg { margin-top: 15px; font-weight: bold; font-size: 14px; padding: 8px; border-radius: 4px; }
-        #scanner-box { width: 100%; max-width: 300px; margin: 15px auto; background: #000; border-radius: 6px; overflow: hidden; }
+        input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+        .action-btn { background: #4a148c; color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        .back-link { margin-top: 20px; display: inline-block; font-size: 14px; color: #4a148c; cursor: pointer; text-decoration: underline; font-weight: 500; }
+        .feedback-msg { margin-top: 15px; font-weight: bold; font-size: 14px; padding: 10px; border-radius: 6px; text-align: center; }
+        #scanner-box { width: 100%; max-width: 280px; margin: 15px auto; background: #000; border-radius: 8px; overflow: hidden; }
+        .host-redirect { margin-top: 25px; color: rgba(255,255,255,0.7); font-size: 14px; cursor: pointer; text-decoration: underline; font-weight: 500; }
+        .host-redirect:hover { color: white; }
     </style>
 </head>
 <body>
 
     <div class="login-card">
         <div id="section-hub">
-            <h1>Scout Scavenger Portal</h1>
-            <p style="color:#666; font-size:14px; margin-bottom:25px;">Select an option below to enter the live game map tracker.</p>
+            <h1>Scout Portal</h1>
             <div class="menu-grid">
-                <div class="menu-card" onclick="switchPanel('SCAN_REG')">📷 Scan Team Creation Code</div>
-                <div class="menu-card" onclick="switchPanel('MANUAL_REG')">✏️ Create Team (Manual Form)</div>
-                <div class="menu-card" onclick="switchPanel('REJOIN')">🔑 Rejoin Existing Team</div>
+                <div class="menu-card" onclick="switchPanel('SCAN_REG')">📷 Create New Team</div>
+                <div class="menu-card" onclick="switchPanel('REJOIN')">🔑 Rejoin Team</div>
             </div>
         </div>
 
         <div id="section-scan-reg" style="display:none;">
-            <h1>Scan Creation Passport</h1>
-            <p style="color:#666; font-size:13px;">Point camera lens layout target at the Master Registration Passport QR Code card.</p>
+            <h1>Scan Creation Code</h1>
+            <p style="color:#666; font-size:13px; margin-bottom:15px;">Scan the Registration Passport QR Code to activate a team slot.</p>
             <div id="scanner-box"><div id="reg-reader" style="width:100%;"></div></div>
-            <span class="back-link" onclick="switchPanel('HUB')">← Return to Main Hub</span>
+            <span class="back-link" onclick="switchPanel('HUB')">← Back</span>
         </div>
 
         <div id="section-manual-reg" style="display:none;">
-            <h1>New Team Registry</h1>
+            <h1>Register Team</h1>
             <div class="input-group">
-                <label>Team Username / Patrol Name</label>
-                <input type="text" id="reg-team-name" placeholder="e.g. Eagle Patrol">
+                <label>Team Username Name</label>
+                <input type="text" id="reg-team-name" placeholder="e.g. Fox Patrol">
             </div>
             <div class="input-group">
-                <label>Choose Access PIN</label>
-                <input type="password" id="reg-team-pin" placeholder="4-digit access code" maxlength="6">
+                <label>Access PIN</label>
+                <input type="password" id="reg-team-pin" placeholder="4-digit security code" maxlength="6">
             </div>
-            <button class="action-btn" onclick="submitEntryAction('CREATE')">Register New Team Slot</button>
-            <span class="back-link" onclick="switchPanel('HUB')">← Return to Main Hub</span>
+            <button class="action-btn" onclick="submitEntryAction('CREATE')">Create Team</button>
+            <span class="back-link" onclick="switchPanel('HUB')">← Back</span>
         </div>
 
         <div id="section-rejoin" style="display:none;">
-            <h1>Rejoin Existing Team</h1>
+            <h1>Rejoin Team</h1>
             <div class="input-group">
                 <label>Registered Team Username</label>
-                <input type="text" id="login-team-name" placeholder="Enter team identifier title">
+                <input type="text" id="login-team-name" placeholder="Enter your team name">
             </div>
             <div class="input-group">
-                <label>Team Access PIN</label>
-                <input type="password" id="login-team-pin" placeholder="Enter assigned security code">
+                <label>Access PIN</label>
+                <input type="password" id="login-team-pin" placeholder="Enter security PIN">
             </div>
-            <button class="action-btn" onclick="submitEntryAction('REJOIN')">Login / Connect Session</button>
-            <span class="back-link" onclick="switchPanel('HUB')">← Return to Main Hub</span>
+            <button class="action-btn" onclick="submitEntryAction('REJOIN')">Rejoin / Sync</button>
+            <span class="back-link" onclick="switchPanel('HUB')">← Back</span>
         </div>
 
         <div class="feedback-msg" id="status-feedback" style="display:none;"></div>
     </div>
+
+    <span class="host-redirect" onclick="location.href='host-login.html'">Go to Host Dashboard</span>
 
     <script>
         const BACKEND_URL = 'https://scouts-backend-24lj.onrender.com';
@@ -108,13 +110,13 @@
                         feedback.style.display = 'block';
                         feedback.style.backgroundColor = '#e8f5e9';
                         feedback.style.color = '#2e7d32';
-                        feedback.innerText = "🔑 Passport verified! Please input your custom team details below.";
+                        feedback.innerText = "✅ Passport authorized! Setup your name and pin below.";
                     } else {
                         const feedback = document.getElementById('status-feedback');
                         feedback.style.display = 'block';
                         feedback.style.backgroundColor = '#ffebee';
                         feedback.style.color = '#c62828';
-                        feedback.innerText = "Invalid creation passport target code matched.";
+                        feedback.innerText = "❌ Invalid creation passport code matched.";
                     }
                 },
                 () => {}
@@ -139,14 +141,14 @@
                 feedback.style.display = 'block';
                 feedback.style.backgroundColor = '#ffebee';
                 feedback.style.color = '#c62828';
-                feedback.innerText = "Please fill out all inputs forms.";
+                feedback.innerText = "Please complete all inputs fields.";
                 return;
             }
 
             feedback.style.display = 'block';
-            feedback.style.backgroundColor = '#e0f2f1';
-            feedback.style.color = '#004d40';
-            feedback.innerText = "Processing server record pipeline link...";
+            feedback.style.backgroundColor = '#f3e5f5';
+            feedback.style.color = '#4a148c';
+            feedback.innerText = "Connecting to pipeline...";
 
             fetch(`${BACKEND_URL}${targetEndpoint}`, {
                 method: 'POST',
@@ -159,10 +161,10 @@
                     localStorage.setItem('scout_team_id', data.teamId);
                     feedback.style.backgroundColor = '#e8f5e9';
                     feedback.style.color = '#2e7d32';
-                    feedback.innerText = `Authorized! Connected as Team ${data.teamId}.`;
+                    feedback.innerText = `Authorized as Team ${data.teamId}! Launching...`;
                     setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
                 } else {
-                    throw new Error(data.message || "Invalid credentials or authorization block.");
+                    throw new Error(data.message || "Invalid credentials.");
                 }
             })
             .catch(err => {
