@@ -252,7 +252,7 @@
             <div class="qr-action-row">
                 <button class="action-btn" onclick="renderFilteredQRDirectory('General')">General Codes</button>
                 <button class="action-btn" onclick="renderFilteredQRDirectory('Scout')">Scout Team Passports</button>
-                <button class="action-btn" onclick="renderFilteredQRDirectory('Explorer')">ESU Team Passports</button>
+                <button class="action-btn" onclick="renderFilteredQRDirectory('ESU')">ESU Team Passports</button>
                 <button class="action-btn" onclick="renderFilteredQRDirectory('Catcher')">Catcher Passports</button>
                 <button class="action-btn" onclick="renderFilteredQRDirectory('Waypoints')">Infrastructure Waypoints</button>
                 <input type="text" class="text-input" id="qr-search-field" placeholder="Search Group/Waypoint ID..." oninput="evaluateQRSearchFilter()">
@@ -315,7 +315,7 @@
             if(target === 'settings') { refreshStaffRegistryProfilesList(); }
         }
 
-        // AUTO EXCEL GENERATOR LOGIC ENGINE
+        // FIXED AUTOMATED ENGINE: MAPS TO PRECISE LOWERCASE_UNDERSCORE BACKEND VARIABLE REQUIREMENTS
         function downloadTemplateFile(templateType) {
             let columnHeaders = [];
             let mockRows = [];
@@ -323,15 +323,15 @@
 
             if (templateType === 'people') {
                 fileName = "Operation_Chameleon_People_Registry_Template.xlsx";
-                columnHeaders = ["Group Number", "Scout Group", "Category", "No Of People"];
+                columnHeaders = ["group_number", "scout_group", "category", "no_of_people"];
                 mockRows = [
                     ["1", "1st Solihull (A)", "Scout", "5"],
-                    ["2", "Knowle Sea Scouts (Red)", "ESU", "4"],
-                    ["C1", "District Catcher Crew Alfa", "Catcher", "3"]
+                    ["2", "Knowle Explorer Unit", "ESU", "4"],
+                    ["C1", "District Catch Team Black", "Catcher", "3"]
                 ];
             } else if (templateType === 'event') {
                 fileName = "Operation_Chameleon_Waypoint_Infrastructure_Template.xlsx";
-                columnHeaders = ["Code", "Type", "Target Group", "Value"];
+                columnHeaders = ["code", "type", "target_group", "value"];
                 mockRows = [
                     ["W01", "Waypoint", "All", "10"],
                     ["W02", "Waypoint", "Scout", "15"],
@@ -389,14 +389,12 @@
             const headingRow = document.getElementById(`head-${categoryKey.toLowerCase()}`);
             const bodyRow = document.getElementById(`body-${categoryKey.toLowerCase()}`);
 
-            // Build dynamic grid columns headers
             let headerHTML = `<th>Team No</th><th>Scout Group</th><th>Size</th><th>Logged In</th>`;
             targets.forEach(w => headerHTML += `<th>WP ${w.code}</th>`);
             checkStations.forEach(c => headerHTML += `<th>CP ${c.code}</th>`);
             headerHTML += `<th>Gained</th><th>Lost</th><th>Total Points</th><th>${categoryKey === 'Catcher' ? 'Groups Caught' : 'Times Caught'}</th><th>Grace Remaining</th>`;
             headingRow.innerHTML = headerHTML;
 
-            // Generate content records mapping parameters loops
             bodyRow.innerHTML = '';
             if(filteredTeams.length === 0) {
                 bodyRow.innerHTML = `<tr><td colspan="12">No registered structural profile records match category parameters grid rows.</td></tr>`;
@@ -407,7 +405,6 @@
                 const isLoggedIn = t.pin ? '🟢 Yes' : '🔴 No';
                 let rowHTML = `<tr><td><strong>${t.group_number}</strong></td><td>${t.scout_group}</td><td>${t.no_of_people}</td><td>${isLoggedIn}</td>`;
                 
-                // Waypoints check markers loop parsing
                 targets.forEach(w => {
                     const matchLog = matrixCache.logs.find(l => l.team_id === t.group_number && l.target_id === w.code && l.action_type === 'WAYPOINT');
                     if(matchLog) {
@@ -416,7 +413,6 @@
                     } else { rowHTML += `<td>X</td>`; }
                 });
 
-                // Checkpoint check markers mapping loops
                 checkStations.forEach(c => {
                     const matchLog = matrixCache.logs.find(l => l.team_id === t.group_number && l.target_id === c.code && l.action_type === 'CHECKIN');
                     if(matchLog) {
@@ -425,7 +421,6 @@
                     } else { rowHTML += `<td>X</td>`; }
                 });
 
-                // Grace calculation parameters loop formatting string
                 let graceStr = '00:00';
                 if(t.last_caught_at) {
                     const elapsed = new Date() - new Date(t.last_caught_at);
@@ -533,6 +528,7 @@
                 });
         }
 
+        // FIXED DIRECTORY ITERATOR: Properly evaluates currentQRFilterSelection against standard strings
         function evaluateQRSearchFilter() {
             const query = document.getElementById('qr-search-field').value.trim().toLowerCase();
             const grid = document.getElementById('qr-directory-canvas-target');
@@ -542,8 +538,8 @@
 
             if(currentQRFilterSelection === 'General') {
                 arrayCollection = [{ id: 'INITIALIZE_LAUNCHPAD_PORTAL', label: 'Launch System Setup', codeString: 'CHAMELEON_INITIALIZE_LAUNCHPAD' }];
-            } else if(['Scout', 'Explorer', 'Catcher'].includes(currentQRFilterSelection)) {
-                arrayCollection = matrixCache.teams.filter(t => t.category === (currentQRFilterSelection === 'Explorer' ? 'ESU' : currentQRFilterSelection))
+            } else if(['Scout', 'ESU', 'Catcher'].includes(currentQRFilterSelection)) {
+                arrayCollection = matrixCache.teams.filter(t => t.category === currentQRFilterSelection)
                     .map(t => ({ id: t.group_number, label: `${t.scout_group} (#${t.group_number})`, codeString: `CHAMELEON_INITIALIZE_GROUP_${t.group_number}` }));
             } else if(currentQRFilterSelection === 'Waypoints') {
                 arrayCollection = matrixCache.events.map(e => ({ id: e.code, label: `${e.type} Node: ${e.code}`, codeString: e.code }));
