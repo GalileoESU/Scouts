@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scout Scavenger Hunt</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 400px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            box-sizing: border-box;
+        }
+        h1 { color: #2e7d32; margin-bottom: 5px; }
+        .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }
+        
+        /* The camera container */
+        #reader {
+            width: 100% !important;
+            border: 2px solid #2e7d32 !important;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #result-box {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            border-radius: 8px;
+            color: #2e7d32;
+            word-break: break-all;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Scout Hunt</h1>
+        <p class="subtitle">Scan a checkpoint QR code to log your find!</p>
+        
+        <div id="reader"></div>
+        
+        <div id="result-box" id="result">
+            <strong>Code Found!</strong><br>
+            <span id="scanned-text"></span><br>
+            <small id="scanned-time" style="color: #666;"></small>
+        </div>
+    </div>
+
+    <script>
+        // Once the webpage loads, start the scanner
+        function onScanSuccess(decodedText, decodedResult) {
+            // 1. Play a subtle beep sound or vibrate (optional)
+            if (navigator.vibrate) navigator.vibrate(100);
+
+            // 2. Display the information on the screen
+            document.getElementById('result-box').style.display = 'block';
+            document.getElementById('scanned-text').innerText = "Data: " + decodedText;
+            
+            // 3. Log the exact date and time
+            const now = new Date();
+            document.getElementById('scanned-time').innerText = "Logged at: " + now.toLocaleString();
+
+            /* FUTURE STEP: This is where we will write the code to send 
+              'decodedText' and 'now' straight to your database!
+            */
+            
+            // Optional: Stop scanning after a successful catch to prevent spamming
+            html5QrcodeScanner.clear();
+        }
+
+        function onScanFailure(error) {
+            // We leave this blank because the scanner fails many times per second 
+            // while looking for a QR code in the video frame.
+        }
+
+        // Initialize the scanner inside the div with id="reader"
+        let html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", 
+            { fps: 10, qrbox: {width: 250, height: 250} },
+            /* verbose= */ false
+        );
+        
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    </script>
+</body>
+</html>
