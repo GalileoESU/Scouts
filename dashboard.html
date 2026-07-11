@@ -86,9 +86,9 @@
             border: 2px solid #4a148c;
         }
         .backup-code-box {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
-            letter-spacing: 3px;
+            letter-spacing: 1px;
             color: #4a148c;
             background: #f3e5f5;
             padding: 12px;
@@ -245,7 +245,7 @@
             <p style="font-size: 13px; color: #666; margin: 0 0 10px 0;">Present this barcode matrix when intercepted by Catchers or when entering active Checkpoints.</p>
             <div class="qr-display-wrapper"><div id="team-passport-qrcode"></div></div>
             <div style="font-size: 13px; font-weight: bold; color: #555; margin-top: 10px;">Manual Backdoor Backup Identifier</div>
-            <div class="backup-code-box" id="backup-digits-label">00000000</div>
+            <div class="backup-code-box" id="backup-digits-label">Loading...</div>
         </div>
     </div>
 
@@ -259,9 +259,11 @@
             <p style="font-size:14px; color:#555; margin:0;" id="scanner-instruction-label">Scan waypoint flag nodes distributed inside the designated matrix parameters.</p>
             <div id="camera-housing-box"><div id="dashboard-camera-element" style="width:100%;"></div></div>
             
+            <button class="action-btn" id="camera-toggle-switch-btn" style="background-color:#0288d1; margin-top:10px;" onclick="toggleDashboardCameraDirection()">🔄 Switch Camera View</button>
+            
             <div style="margin: 25px 0 10px 0; font-weight: bold; color: #777; font-size: 13px;">--- OR MANUAL CODE INPUT OVERRIDE ---</div>
-            <p style="font-size:12px; color:#666; margin:0;">If camera scanning encounters error vectors, input the 8-digit backup key below.</p>
-            <input type="text" class="text-input" id="manual-code-override-field" placeholder="Enter 8-digit Code" maxlength="8">
+            <p style="font-size:12px; color:#666; margin:0;" id="manual-instruction-sublabel">If camera scanning encounters error vectors, input the code backup key below.</p>
+            <input type="text" class="text-input" id="manual-code-override-field" placeholder="e.g. WP-00001 or Team Number">
             <button class="action-btn" onclick="submitManualCodeOverride()">Submit Code Override</button>
         </div>
     </div>
@@ -310,6 +312,7 @@
         let currentProfileCache = null;
         let activeDashboardScanner = null;
         let countdownIntervalTracker = null;
+        let dashboardCameraFacingMode = "environment";
 
         if(!teamId) { window.location.href = 'index.html'; }
 
@@ -320,9 +323,7 @@
             document.getElementById(`panel-${target}`).classList.add('active');
             buttonElement.classList.add('active');
 
-            if(activeDashboardScanner) {
-                activeDashboardScanner.stop().then(() => { activeDashboardScanner = null; });
-            }
+            terminateDashboardScannerStream();
 
             if(target === 'scanner') { startDashboardScanner(); }
             if(target === 'score') { reloadMetricsAndLogs(); }
@@ -339,24 +340,24 @@
                 if(data.success) {
                     currentProfileCache = data.team;
                     
-                    // Adjust parameters depending on the identity status
                     document.getElementById('qr-team-title').innerText = currentProfileCache.scout_group;
                     document.getElementById('qr-team-subtitle').innerText = `${currentProfileCache.category} | Team #${currentProfileCache.group_number}`;
                     document.getElementById('display-score-total').innerText = currentProfileCache.points;
                     
-                    // Update layout copy elements if category represents adult Catchers
                     if(currentProfileCache.category === 'Catcher') {
-                        document.getElementById('scanner-view-title').innerText = "QR Scanner";
+                        document.getElementById('scanner-view-title').innerText = "Catcher Intercept Hub";
                         document.getElementById('nav-tab-scan-button-text').innerHTML = '<span class="nav-icon">📷</span>QR Scanner';
-                        document.getElementById('scanner-instruction-label').innerText = "Scan a Scout group's passport screen to log a catch event, or scan Checkpoint station codes.";
+                        document.getElementById('scanner-instruction-label').innerText = "Scan a Scout/ESU team's passport code layout to record an intercept catch.";
+                        document.getElementById('manual-instruction-sublabel').innerText = "If camera capture fails, type the raw numeric Group Number of the team captured below.";
+                        document.getElementById('manual-code-override-field').placeholder = "e.g. 5, 12, 24";
+                        document.getElementById('backup-digits-label').innerText = `CATCHER_ID_${currentProfileCache.group_number}`;
+                    } else {
+                        const parsedValue = parseInt(currentProfileCache.group_number);
+                        const fallbackString = isNaN(parsedValue) ? currentProfileCache.group_number : `TEAM-${String(parsedValue).padStart(3, '0')}`;
+                        document.getElementById('backup-digits-label').innerText = fallbackString;
                     }
 
-                    // Build 8-digit identification codes based on target team sequences
-                    const parsedValue = parseInt(currentProfileCache.group_number) || 0;
-                    const paddedCode = String(parsedValue * 12345).padStart(8, '0');
-                    document.getElementById('backup-digits-label').innerText = paddedCode;
-
-                    // Generate the passport string matrix
+                    // Generate Passport QR code
                     document.getElementById('team-passport-qrcode').innerHTML = '';
                     new QRCode(document.getElementById('team-passport-qrcode'), {
                         text: `CHAMELEON_TEAM_${currentProfileCache.group_number}`,
@@ -364,7 +365,6 @@
                         height: 180
                     });
 
-                    // Manage grace countdown alerts tracking
                     handleGracePeriodClock(currentProfileCache.last_caught_at);
                 }
             });
@@ -373,7 +373,7 @@
         function handleGracePeriodClock(lastCaughtAtTimestamp) {
             clearInterval(countdownIntervalTracker);
             const alertBanner = document.getElementById('panel-grace-timer');
-            if(!lastCaughtAtTimestamp) { alertBanner.style.display = 'none'; return; }
+            if(!lastCaughtAtTimestamp || currentProfileCache.category === 'Catcher') { alertBanner.style.display = 'none'; return; }
 
             function refreshClock() {
                 const elapsedMs = new Date() - new Date(lastCaughtAtTimestamp);
@@ -395,12 +395,31 @@
 
         function startDashboardScanner() {
             activeDashboardScanner = new Html5Qrcode("dashboard-camera-element");
+            launchScannerHardwareEngine();
+        }
+
+        function launchScannerHardwareEngine() {
+            if(!activeDashboardScanner) return;
             activeDashboardScanner.start(
-                { facingMode: "environment" }, { fps: 10, qrbox: 220 },
+                { facingMode: dashboardCameraFacingMode }, { fps: 10, qrbox: 220 },
                 (decodedText) => {
                     executeScannedPayloadTransmission(decodedText);
                 }, () => {}
             ).catch(() => {});
+        }
+
+        function toggleDashboardCameraDirection() {
+            if(!activeDashboardScanner) return;
+            dashboardCameraFacingMode = (dashboardCameraFacingMode === "environment") ? "user" : "environment";
+            activeDashboardScanner.stop().then(() => {
+                launchScannerHardwareEngine();
+            });
+        }
+
+        function terminateDashboardScannerStream() {
+            if(activeDashboardScanner) {
+                activeDashboardScanner.stop().then(() => { activeDashboardScanner = null; }).catch(() => { activeDashboardScanner = null; });
+            }
         }
 
         function captureGPSCoordinates() {
@@ -415,15 +434,19 @@
         }
 
         async function executeScannedPayloadTransmission(payloadString) {
-            if(activeDashboardScanner) { await activeDashboardScanner.stop(); activeDashboardScanner = null; }
-            
+            terminateDashboardScannerStream();
             const coords = await captureGPSCoordinates();
 
-            // SCENARIO A: Catcher operations intercepting a Youth group passport code
-            if(payloadString.includes("CHAMELEON_TEAM_")) {
+            // Intercept Catch Strategy Routine
+            if(payloadString.toUpperCase().includes("CHAMELEON_TEAM_") || currentProfileCache.category === 'Catcher') {
                 if(currentProfileCache.category !== 'Catcher') {
-                    triggerToastAlert("❌ Error: Only adult Catchers can scan team codes.", false);
+                    triggerToastAlert("❌ Error: Only adult Catchers can register team intercepts.", false);
                     return;
+                }
+                
+                let processedPassportToken = payloadString;
+                if(!processedPassportToken.toUpperCase().includes("CHAMELEON_TEAM_")) {
+                    processedPassportToken = `CHAMELEON_TEAM_${payloadString.trim()}`;
                 }
                 
                 fetch(`${BACKEND_URL}/api/client/process-passport`, {
@@ -431,7 +454,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         operatorId: teamId,
-                        scannedPassportString: payloadString,
+                        scannedPassportString: processedPassportToken,
                         lat: coords.lat, lon: coords.lon
                     })
                 })
@@ -443,7 +466,7 @@
                 return;
             }
 
-            // SCENARIO B: Processing Waypoint scans
+            // Waypoint Submission Strategy Routine
             fetch(`${BACKEND_URL}/api/client/scan-waypoint`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -456,7 +479,7 @@
             .then(res => res.json())
             .then(data => {
                 if(data.success) {
-                    triggerToastAlert(`✅ Waypoint (${data.code}) has been scanned successfully at ${data.time}`, true);
+                    triggerToastAlert(`✅ Waypoint (${data.code}) successfully scanned!`, true);
                 } else {
                     triggerToastAlert(`❌ Error: ${data.message}`, false);
                 }
@@ -470,17 +493,7 @@
             const rawVal = document.getElementById('manual-code-override-field').value.trim();
             if(!rawVal) return;
             document.getElementById('manual-code-override-field').value = '';
-            
-            // Decrypt 8-digit key down to 3-digit waypoint identifier number parameters
-            let cleanCode = rawVal;
-            if(rawVal.length === 8) {
-                const parsedNum = parseInt(rawVal);
-                if(!isNaN(parsedNum) && parsedNum % 12345 === 0) {
-                    cleanCode = String(parsedNum / 12345);
-                }
-            }
-            
-            executeScannedPayloadTransmission(cleanCode);
+            executeScannedPayloadTransmission(rawVal);
         }
 
         function triggerToastAlert(messageText, isSuccess) {
@@ -490,7 +503,10 @@
             toast.style.display = 'block';
             window.scrollTo(0,0);
             
-            setTimeout(() => { toast.style.display = 'none'; switchTab('qr', document.querySelectorAll('.nav-tab')[0]); }, 5000);
+            setTimeout(() => { 
+                toast.style.display = 'none'; 
+                switchTab('qr', document.querySelectorAll('.nav-tab')[0]); 
+            }, 4000);
         }
 
         function reloadMetricsAndLogs() {
@@ -519,6 +535,7 @@
 
         function triggerSessionSignOut() {
             if(!confirm("Confirm user logout request?")) return;
+            terminateDashboardScannerStream();
             localStorage.clear();
             window.location.href = 'index.html';
         }
