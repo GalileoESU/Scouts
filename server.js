@@ -15,34 +15,41 @@ const SUPABASE_URL = 'https://ebtcoqdfhpmjlaevinvp.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_sJR22My1jObDNxGm770e3w_TNW279jd'; 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Helper function to build cryptographic random number strings
-function generateRandomCode(length) {
-    let result = '';
-    const characters = '0123456789';
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
+// Helper function to generate an unguessable 8-digit team backup code
+function generateRandomBackupCode() {
+    return Math.floor(10000000 + Math.random() * 90000000).toString();
 }
 
-// --- NEW DIRECT DATABASE INJECTION ROUTES ---
+// Helper function to generate a secure 6-digit waypoint code
+function generateRandomWaypointCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
-// Direct array insert for teams with random 8-digit backup codes
+// --- NEW DIRECT DATABASE INJECTION ROUTES (Bypasses Spreadsheet Parser Errors) ---
+
+// Direct array insert for teams (Automatically attaches secure backup codes)
 app.post('/api/manage/inject-people-json', async (req, res) => {
     try {
-        const { payload } = req.body;
+        const { payload } = req.body; 
         if (!payload || !Array.isArray(payload)) {
             return res.status(400).json({ success: false, message: "Invalid JSON array payload layout." });
         }
         
+        // Wipe old entries clean
         await supabase.from('teams').delete().neq('group_number', 'RESET_FORCE');
         
-        // Enrich payload with unguessable random 8-digit backup tokens
+        // Auto-enrich rows with unique, random 8-digit backup codes
         const enrichedPayload = payload.map(team => ({
             ...team,
-            backup_code: generateRandomCode(8)
+            backup_code: team.backup_code || generateRandomBackupCode(),
+            points: team.points || 0,
+            points_gained: team.points_gained || 0,
+            points_lost: team.points_lost || 0,
+            caught_count: team.caught_count || 0,
+            groups_caught: team.groups_caught || 0
         }));
-        
+
+        // Bulk insert directly into the Supabase SQL database engine
         const { error } = await supabase.from('teams').insert(enrichedPayload);
         if (error) throw error;
         
@@ -52,7 +59,7 @@ app.post('/api/manage/inject-people-json', async (req, res) => {
     }
 });
 
-// Direct array insert for waypoints with random 6-digit secret verification codes
+// Direct array insert for waypoints/events (Handles AUTO_GEN keywords)
 app.post('/api/manage/inject-event-json', async (req, res) => {
     try {
         const { payload } = req.body;
@@ -62,12 +69,12 @@ app.post('/api/manage/inject-event-json', async (req, res) => {
 
         await supabase.from('events').delete().neq('code', 'RESET_FORCE');
         
-        // Assign unguessable random 6-digit validation keys to waypoints
-        const enrichedPayload = payload.map(ev => ({
-            ...ev,
-            code: ev.type === 'Waypoint' ? generateRandomCode(6) : String(ev.code).trim().padStart(3, '0')
+        // Auto-transform AUTO_GEN codes into unguessable 6-digit keys
+        const enrichedPayload = payload.map(event => ({
+            ...event,
+            code: (event.code === 'AUTO_GEN' || !event.code) ? generateRandomWaypointCode() : String(event.code).trim()
         }));
-        
+
         const { error } = await supabase.from('events').insert(enrichedPayload);
         if (error) throw error;
 
@@ -120,64 +127,20 @@ app.post('/api/manage/users/clear-all', async (req, res) => {
     return res.json({ success: true });
 });
 
-// --- SPREADSHEET PARSERS WITH PROTECTION ENHANCEMENTS ---
-app.post('/api/manage/upload-people', upload.single('peopleFile'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ success: false, message: "Missing file payload." });
-        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-
-        const formatted = rows.map(r => ({
-            group_number: String(r['Group Number'] || r['group_number'] || '').trim(),
-            scout_group: String(r['Group Scout Group'] || r['Scout Group'] || r['scout_group'] || '').trim(),
-            category: String(r['Group Category'] || r['Category'] || r['category'] || 'Scout').trim(),
-            no_of_people: parseInt(r['No of People'] || r['no_of_people'] || 1),
-            youngest_age: r['Youngest Age'] ? parseInt(r['Youngest Age']) : null,
-            oldest_age: r['Oldest Age'] ? parseInt(r['Oldest Age']) : null,
-            backup_code: generateRandomCode(8) // Anti-cheat unguessable key assignment
-        })).filter(r => r.group_number !== '');
-
-        await supabase.from('teams').delete().neq('group_number', 'RESET_FORCE');
-        const { error } = await supabase.from('teams').insert(formatted);
-        if (error) throw error;
-        return res.json({ success: true, count: formatted.length });
-    } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
-});
-
-app.post('/api/manage/upload-event', upload.single('eventFile'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ success: false, message: "Missing file payload." });
-        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-
-        const formatted = rows.map(r => {
-            const isWaypoint = String(r['Type'] || r['type'] || '').trim().toLowerCase() === 'waypoint';
-            return {
-                code: isWaypoint ? generateRandomCode(6) : String(r['Checkpoint / Waypoint No'] || r['Code'] || r['code'] || '').trim().padStart(3, '0'),
-                type: String(r['Type'] || r['type'] || '').trim(),
-                target_group: String(r['Group'] || r['Target Group'] || r['target_group'] || 'All').trim()
-            };
-        }).filter(r => r.code !== '');
-
-        await supabase.from('events').delete().neq('code', 'RESET_FORCE');
-        const { error } = await supabase.from('events').insert(formatted);
-        if (error) throw error;
-        return res.json({ success: true, count: formatted.length });
-    } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
-});
-
-// --- CORE CLIENT ACTION LOGIC (SCANS, CATCHES, BACKUPS) ---
+// --- CLIENT AUTHENTICATION & PASSPORT CROSS-CHECK ENGINE ---
 app.post('/api/client/scan-waypoint', async (req, res) => {
     let { teamId, code, lat, lon } = req.body;
     try {
         let cleanCode = String(code).trim().toUpperCase();
+        if (cleanCode.startsWith("WP-")) {
+            cleanCode = cleanCode.replace("WP-", "");
+        }
 
-        // Check if matching random 6-digit key directly
-        const { data: ev, error: evErr } = await supabase.from('events').select('*').eq('code', cleanCode).eq('type', 'Waypoint').maybeSingle();
-        if (evErr || !ev) return res.status(404).json({ success: false, message: `Waypoint flag code ${cleanCode} does not exist.` });
+        const { data: ev } = await supabase.from('events').select('*').eq('code', cleanCode).eq('type', 'Waypoint').maybeSingle();
+        if (!ev) return res.status(404).json({ success: false, message: `Waypoint ${cleanCode} does not exist.` });
 
-        const { data: team, error: teamErr } = await supabase.from('teams').select('*').eq('group_number', teamId).maybeSingle();
-        if (teamErr || !team) return res.status(404).json({ success: false, message: "Team record profile lost." });
+        const { data: team } = await supabase.from('teams').select('*').eq('group_number', teamId).maybeSingle();
+        if (!team) return res.status(404).json({ success: false, message: "Team record profile lost." });
 
         if (ev.target_group !== 'All' && !ev.target_group.toLowerCase().includes(team.category.toLowerCase())) {
             return res.status(403).json({ success: false, message: "This waypoint is not designated for your category." });
@@ -185,13 +148,13 @@ app.post('/api/client/scan-waypoint', async (req, res) => {
 
         const { data: duplicated } = await supabase.from('logs').select('*')
             .eq('team_id', teamId).eq('target_id', cleanCode).eq('action_type', 'WAYPOINT').maybeSingle();
-        if (duplicated) return res.status(400).json({ success: false, message: `Waypoint ${cleanCode} already claimed.` });
+        if (duplicated) return res.status(400).json({ success: false, message: `Waypoint already claimed.` });
 
         const valueReward = 10;
 
         await supabase.from('logs').insert([{
             team_id: teamId, action_type: 'WAYPOINT', target_id: cleanCode,
-            details: `Waypoint flag successfully verified.`, points_changed: valueReward,
+            details: `Waypoint ${cleanCode} Scanned successfully.`, points_changed: valueReward,
             latitude: lat || null, longitude: lon || null
         }]);
 
@@ -207,29 +170,21 @@ app.post('/api/client/scan-waypoint', async (req, res) => {
 app.post('/api/client/process-passport', async (req, res) => {
     const { operatorId, scannedPassportString, currentCheckpointContext, lat, lon } = req.body;
     try {
-        let targetTeamNum = null;
-
-        // Check text signature matching QR format, or match via direct random backup_code injection
-        const teamNumMatch = scannedPassportString.match(/CHAMELEON_TEAM_(.+)/);
+        const cleanInputToken = String(scannedPassportString).trim();
         
-        let targetTeam = null;
-        if (teamNumMatch) {
-            targetTeamNum = teamNumMatch[1];
-            const { data } = await supabase.from('teams').select('*').eq('group_number', targetTeamNum).maybeSingle();
-            targetTeam = data;
-        } else {
-            // Find target securely by matching their unique 8-digit code
-            const { data } = await supabase.from('teams').select('*').eq('backup_code', scannedPassportString.trim()).maybeSingle();
-            targetTeam = data;
-            if (targetTeam) targetTeamNum = targetTeam.group_number;
-        }
+        // Find the target team based on their unique 8-digit randomized backup code
+        const { data: targetTeam } = await supabase.from('teams').select('*').eq('backup_code', cleanInputToken).maybeSingle();
+        if (!targetTeam) return res.status(404).json({ success: false, message: "Security Token mismatch. No matching active group profile." });
 
-        if (!targetTeam) return res.status(404).json({ success: false, message: "Invalid scan profile token matched." });
+        const targetTeamNum = targetTeam.group_number;
 
-        const { data: operatorTeam } = await supabase.from('teams').select('*').eq('group_number', operatorId).maybeSingle();
-
-        // Checkpoint Handler Routing Logic
+        // 1. Handle Checkpoint Check-in Layout Console
         if (currentCheckpointContext) {
+            const { data: duplicatedCheckin } = await supabase.from('logs').select('*')
+                .eq('team_id', targetTeamNum).eq('target_id', currentCheckpointContext).eq('action_type', 'CHECKIN').maybeSingle();
+            
+            if (duplicatedCheckin) return res.status(400).json({ success: false, message: "Team already verified at this Checkpoint." });
+
             await supabase.from('logs').insert([{
                 team_id: targetTeamNum, action_type: 'CHECKIN', target_id: currentCheckpointContext,
                 details: `Signed into Checkpoint station: ${currentCheckpointContext}`,
@@ -238,7 +193,9 @@ app.post('/api/client/process-passport', async (req, res) => {
             return res.json({ success: true, type: 'CHECKIN', message: `Group ${targetTeamNum} Signed In Successfully` });
         }
 
-        // Catcher Interception Logic (Intentionally allows negative values)
+        // 2. Handle Catcher Intercept Logic
+        const { data: operatorTeam } = await supabase.from('teams').select('*').eq('group_number', operatorId).maybeSingle();
+
         if (operatorTeam && operatorTeam.category === 'Catcher') {
             const now = new Date();
             let graceRemainingMinutes = 0;
@@ -257,7 +214,7 @@ app.post('/api/client/process-passport', async (req, res) => {
                 return res.json({ success: true, type: 'GRACE', message: `Target in Grace Period! Encounter logged for safety.` });
             }
 
-            // Calculations explicitly allow points to drop below zero
+            // Deducts points cleanly into negative ranges if required
             await supabase.from('teams').update({
                 points: targetTeam.points - 10, 
                 points_lost: targetTeam.points_lost + 10,
@@ -286,29 +243,23 @@ app.post('/api/client/process-passport', async (req, res) => {
 
 app.post('/api/team/setup-lookup', async (req, res) => {
     const { groupNo } = req.body;
-    try {
-        const { data, error } = await supabase.from('teams').select('*').eq('group_number', String(groupNo).trim()).maybeSingle();
-        if (error || !data) return res.status(404).json({ success: false, message: "Group Number not found." });
-        return res.json({ success: true, team: data });
-    } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
+    const { data } = await supabase.from('teams').select('*').eq('group_number', String(groupNo).trim()).maybeSingle();
+    if (!data) return res.status(404).json({ success: false, message: "Group Number not found." });
+    return res.json({ success: true, team: data });
 });
 
 app.post('/api/team/setup-confirm', async (req, res) => {
     const { groupNo, pin } = req.body;
-    try {
-        const { error } = await supabase.from('teams').update({ pin: String(pin).trim() }).eq('group_number', groupNo);
-        if (error) return res.status(500).json({ success: false });
-        return res.json({ success: true });
-    } catch (err) { return res.status(500).json({ success: false }); }
+    const { error } = await supabase.from('teams').update({ pin: String(pin).trim() }).eq('group_number', groupNo);
+    if (error) return res.status(500).json({ success: false });
+    return res.json({ success: true });
 });
 
 app.post('/api/team/login', async (req, res) => {
     const { groupNo, pin } = req.body;
-    try {
-        const { data, error } = await supabase.from('teams').select('*').eq('group_number', String(groupNo).trim()).eq('pin', String(pin).trim()).maybeSingle();
-        if (error || !data) return res.status(401).json({ success: false, message: "Invalid Group Number or PIN combination." });
-        return res.json({ success: true, team: data });
-    } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
+    const { data } = await supabase.from('teams').select('*').eq('group_number', String(groupNo).trim()).eq('pin', String(pin).trim()).maybeSingle();
+    if (!data) return res.status(401).json({ success: false, message: "Invalid Group Number or PIN combination." });
+    return res.json({ success: true, team: data });
 });
 
 app.get('/api/team/logs/:teamId', async (req, res) => {
@@ -324,13 +275,11 @@ app.get('/api/manage/master-matrix', async (req, res) => {
 });
 
 app.post('/api/manage/purge', async (req, res) => {
-    try {
-        await supabase.from('teams').delete().neq('group_number', 'RESET_FORCE');
-        await supabase.from('logs').delete().neq('team_id', 'RESET_FORCE');
-        await supabase.from('events').delete().neq('code', 'RESET_FORCE');
-        return res.json({ success: true });
-    } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
+    await supabase.from('teams').delete().neq('group_number', 'RESET');
+    await supabase.from('logs').delete().neq('id', 0);
+    await supabase.from('events').delete().neq('code', 'RESET');
+    return res.json({ success: true });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Chameleon Backend Engine running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Chameleon Backend Pipeline running on port ${PORT}`));
