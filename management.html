@@ -8,788 +8,930 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-            background-color: #f1f5f9;
-            margin: 0;
-            padding: 0;
-            color: #1e293b;
-            overflow-x: hidden;
+        :root {
+            --primary: #4a148c;
+            --primary-light: #7c43bd;
+            --primary-dark: #12005e;
+            --secondary: #00bcd4;
+            --success: #22c55e;
+            --danger: #d32f2f;
+            --warning: #f57c00;
+            --bg-main: #f4f7f6;
+            --bg-card: #ffffff;
+            --text-main: #333333;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
         }
 
-        /* Top Management Ribbon */
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            background-color: var(--bg-main);
+            margin: 0;
+            padding: 0;
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Fixed Navigation Brand Header */
         .mgmt-header {
-            background-color: #4a148c;
-            padding: 16px 32px;
+            background-color: var(--primary);
+            padding: 15px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
-        .header-logo {
-            max-height: 44px;
-        }
-        .logout-btn {
-            background-color: #ef4444;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-        .logout-btn:hover {
-            background-color: #dc2626;
-        }
-
-        /* Nav Ribbon Workspace Controls */
-        .mgmt-nav-bar {
-            background-color: #311b92;
-            display: flex;
-            overflow-x: auto;
-            white-space: nowrap;
-            box-shadow: inset 0 -2px 5px rgba(0,0,0,0.1);
-        }
-        .nav-link {
-            padding: 16px 28px;
-            color: rgba(255, 255, 255, 0.75);
-            text-decoration: none;
-            font-weight: 700;
-            cursor: pointer;
-            border-bottom: 4px solid transparent;
-            transition: all 0.2s ease;
-            font-size: 14px;
-        }
-        .nav-link:hover {
-            color: white;
-            background-color: rgba(255,255,255,0.03);
-        }
-        .nav-link.active {
-            color: white;
-            border-bottom-color: #ea80fc;
-            background-color: rgba(255,255,255,0.06);
-        }
-
-        /* Workspace Core Component Boxes */
-        .workspace-panel {
-            display: none;
-            padding: 32px;
-            max-width: 1500px;
-            margin: 0 auto;
-            animation: paneFadeIn 0.3s ease;
-        }
-        @keyframes paneFadeIn {
-            from { opacity: 0; } to { opacity: 1; }
-        }
-        .workspace-panel.active {
-            display: block;
-        }
-        .workspace-panel h2 {
-            margin-top: 0;
-            font-size: 26px;
-            font-weight: 800;
-            color: #311b92;
-            margin-bottom: 8px;
-        }
-        .workspace-panel p {
-            color: #64748b;
-            margin-bottom: 24px;
-            font-size: 15px;
-        }
-
-        /* Summaries Infrastructure Grid */
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 24px;
-            margin-bottom: 24px;
-        }
-        .stat-box {
-            background: white;
-            padding: 24px;
-            border-radius: 16px;
-            border-left: 6px solid #4a148c;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-            box-sizing: border-box;
-        }
-        .stat-box h3 { margin: 0 0 8px 0; font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-        .stat-box p { margin: 0; font-size: 36px; font-weight: 900; color: #311b92; }
-
-        /* Structural Matrix Sheets Styling */
-        .table-scroller {
-            width: 100%;
-            overflow-x: auto;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-            margin-bottom: 36px;
-            border: 1px solid #e2e8f0;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-            text-align: left;
-        }
-        th, td {
-            padding: 12px 16px;
-            border-bottom: 1px solid #f1f5f9;
-            white-space: nowrap;
-        }
-        th {
-            background-color: #f8fafc;
-            font-weight: 700;
-            color: #4a148c;
-            border-bottom: 2px solid #e2e8f0;
-            text-transform: uppercase;
-            font-size: 11px;
-            letter-spacing: 0.5px;
-        }
-        tr:hover td {
-            background-color: #f8fafc;
-        }
-        .table-section-title {
-            font-size: 18px;
-            font-weight: 800;
-            color: #311b92;
-            margin: 28px 0 12px 0;
+        
+        .header-brand {
             display: flex;
             align-items: center;
+            gap: 15px;
+            color: white;
+        }
+
+        .header-brand h2 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: 0.5px;
+        }
+
+        .logout-btn {
+            background-color: transparent;
+            color: white;
+            border: 2px solid rgba(255,255,255,0.6);
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .logout-btn:hover {
+            background-color: white;
+            color: var(--primary);
+            border-color: white;
+        }
+
+        /* Control Panel Layout Wrapper */
+        .mgmt-container {
+            max-width: 1400px;
+            width: 100%;
+            margin: 30px auto;
+            padding: 0 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            flex: 1;
+        }
+
+        /* Tab Navigation Control */
+        .mgmt-tabs {
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 5px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary-light);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Card Structural Panels */
+        .card {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            margin-bottom: 25px;
+            border: 1px solid rgba(0,0,0,0.02);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 20px;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-description {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 15px;
+            box-sizing: border-box;
+            background-color: #fafafa;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(124, 67, 189, 0.15);
+        }
+
+        /* Button Variations */
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 11px 22px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             gap: 8px;
         }
 
-        /* System Action Controls Form Matrix Cards */
-        .form-card {
+        .btn:hover {
+            background-color: var(--primary-light);
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background-color: var(--text-muted);
+        }
+
+        .btn-secondary:hover {
+            background-color: #475569;
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+        }
+
+        .btn-success:hover {
+            background-color: #16a34a;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* Tables and Visual Data Containers */
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border);
             background: white;
-            padding: 28px;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-            margin-bottom: 28px;
-            border: 1px solid #e2e8f0;
+            margin-top: 15px;
         }
-        .form-card h3 {
-            margin-top: 0;
-            font-size: 16px;
-            color: #1e293b;
-            margin-bottom: 16px;
-            font-weight: 700;
-        }
-        .action-btn {
-            background-color: #4a148c;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-weight: 700;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s ease;
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
             font-size: 14px;
         }
-        .action-btn:hover { background-color: #311b92; }
-        .template-btn { background-color: #16a34a; margin-left: 8px; }
-        .template-btn:hover { background-color: #15803d; }
-        .danger-btn { background-color: #dc2626 !important; }
-        .danger-btn:hover { background-color: #b91c1c !important; }
-        
-        .text-input {
-            padding: 12px;
-            border: 1px solid #cbd5e1;
+
+        th {
+            background-color: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 14px 16px;
+            border-bottom: 2px solid var(--border);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: #f8fafc;
+        }
+
+        code {
+            background-color: #f1f5f9;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        /* Camera Scanner Component Viewport Template */
+        .scanner-viewport-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px 0;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        #checkpoint-scanner-preview {
+            width: 100%;
+            aspect-ratio: 1;
+            border: 4px dashed var(--border);
+            border-radius: 12px;
+            background: #f8fafc;
+            overflow: hidden;
+            position: relative;
+            transition: border-color 0.3s ease;
+        }
+
+        /* Badge and Metrics Pillars */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-runner { background-color: #e0f2fe; color: #0369a1; }
+        .badge-catcher { background-color: #fee2e2; color: #b91c1c; }
+        .badge-leader { background-color: #fef3c7; color: #b45309; }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .metric-card {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            padding: 20px;
             border-radius: 8px;
-            margin-right: 12px;
-            width: 240px;
-            font-size: 14px;
-            outline: none;
-        }
-        .text-input:focus { border-color: #4a148c; }
-
-        /* QR Micro Matrix Blocks */
-        .qr-action-row {
-            display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;
-        }
-        .qr-dir-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px;
-        }
-        .qr-dir-card {
-            background: white; padding: 20px; border-radius: 14px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.02);
-        }
-        .qr-dir-card strong { display: block; margin-bottom: 8px; color: #311b92; font-size: 15px; }
-        .qr-dir-card div { margin: 12px auto; width: 120px; height: 120px; }
-        .qr-dir-card small { display: block; color: #64748b; font-size: 12px; margin-top: 8px; line-height: 1.3; }
-
-        /* Dialog Interceptor Boxes */
-        .popup-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); z-index: 5000; align-items: center; justify-content: center;
-        }
-        .modal-content {
-            background: white; padding: 32px; border-radius: 20px; text-align: center; max-width: 420px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+            text-align: center;
         }
 
-        .diagnostic-log {
-            background: #1e293b; color: #38bdf8; font-family: monospace; padding: 12px; border-radius: 8px; font-size: 11px; overflow-x: auto; max-height: 160px; margin-top: 12px; border: 1px solid #334155; line-height: 1.4;
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .ul-registry {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .ul-registry li {
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fafafa;
+        }
+
+        /* Footer context styles */
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+            font-size: 13px;
+            border-top: 1px solid var(--border);
+            background: white;
+            margin-top: auto;
         }
     </style>
 </head>
 <body>
 
     <div class="mgmt-header">
-        <img src="OCLogo.png" alt="Operation Chameleon Logo" class="header-logo">
-        <button class="logout-btn" onclick="executeSignOut()">Sign Out</button>
-    </div>
-
-    <div class="mgmt-nav-bar">
-        <span class="nav-link active" onclick="switchMgmtTab('home', this)">Home Overview</span>
-        <span class="nav-link" onclick="switchMgmtTab('teamdata', this)">Team Data Sheet</span>
-        <span class="nav-link" onclick="switchMgmtTab('checkpoint', this)">Checkpoint Scanning</span>
-        <span class="nav-link" onclick="switchMgmtTab('qrcodes', this)">QR Codes Directory</span>
-        <span class="nav-link" onclick="switchMgmtTab('settings', this)">System Settings</span>
-    </div>
-
-    <div id="panel-home" class="workspace-panel active">
-        <h2>Live System Operations Deck</h2>
-        <p>Real-time analytics across active units and waypoint claim architectures.</p>
-        <div class="metrics-grid">
-            <div class="stat-box"><h3>Scout Teams Active</h3><p id="m-scout-count">0</p></div>
-            <div class="stat-box"><h3>ESU Teams Active</h3><p id="m-esu-count">0</p></div>
-            <div class="stat-box"><h3>Catchers Registered</h3><p id="m-catcher-count">0</p></div>
-            <div class="stat-box"><h3>Staff Profiles Active</h3><p id="m-staff-count">0</p></div>
+        <div class="header-brand">
+            <h2>Chameleon Wide-Game Control Room HQ</h2>
         </div>
-        <div class="metrics-grid">
-            <div class="stat-box" style="border-left-color: #16a34a;"><h3>Total Waypoints Claimed</h3><p id="m-wp-scans">0</p></div>
-            <div class="stat-box" style="border-left-color: #ea580c;"><h3>Intercept Catch Events</h3><p id="m-catches-total">0</p></div>
-            <div class="stat-box" style="border-left-color: #2563eb;"><h3>Total Points Gained</h3><p id="m-pts-gained">0</p></div>
-            <div class="stat-box" style="border-left-color: #dc2626;"><h3>Total Points Lost</h3><p id="m-pts-lost">0</p></div>
-        </div>
+        <button class="logout-btn" onclick="executeSignOut()">Sign Out Context</button>
     </div>
 
-    <div id="panel-teamdata" class="workspace-panel">
-        <h2>Live Event Spreadsheet Master Ledger</h2>
-        <p>Comprehensive tracking output displaying active grid values, claim logs, and secure backup variables.</p>
-        <button class="action-btn" onclick="fetchMasterMatrixData()" style="margin-bottom: 20px;">🔄 Refresh Grid Layout Arrays</button>
+    <div class="mgmt-container">
         
-        <div class="table-section-title">⚜️ Scout Category Fleet Ledger</div>
-        <div class="table-scroller"><table id="sheet-scout-table"><thead><tr id="head-scout"><th>Loading Structural Headers...</th></tr></thead><tbody id="body-scout"></tbody></table></div>
+        <div class="mgmt-tabs">
+            <button class="tab-btn active" onclick="switchActiveTab(event, 'tab-dashboard')">📊 Main Scoreboard & Logs</button>
+            <button class="tab-btn" onclick="switchActiveTab(event, 'tab-checkpoint')">🛡️ Station Checkpoint Scanner</button>
+            <button class="tab-btn" onclick="switchActiveTab(event, 'tab-ingestion')">📥 Spreadsheet Ingestion</button>
+            <button class="tab-btn" onclick="switchActiveTab(event, 'tab-accounts')">👥 Staff Management</button>
+            <button class="tab-btn" onclick="switchActiveTab(event, 'tab-danger')">⚙️ System Utilities</button>
+        </div>
 
-        <div class="table-section-title">🦅 ESU Category Fleet Ledger</div>
-        <div class="table-scroller"><table id="sheet-esu-table"><thead><tr id="head-esu"><th>Loading Structural Headers...</th></tr></thead><tbody id="body-esu"></tbody></table></div>
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="card">
+                <h3>📈 Live Wide-Game Analytics Scoreboard Matrix</h3>
+                <p class="card-description">Live operational updates and status tallies parsed from the runtime cloud engine. Click refresh to query current database rows.</p>
+                
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div id="metric-total-teams" class="metric-value">0</div>
+                        <div class="metric-label">Registered Teams</div>
+                    </div>
+                    <div class="metric-card">
+                        <div id="metric-total-points" class="metric-value">0</div>
+                        <div class="metric-label">Combined Cumulative Points</div>
+                    </div>
+                    <div class="metric-card">
+                        <div id="metric-total-catches" class="metric-value">0</div>
+                        <div class="metric-label">Successful Catch Intercepts</div>
+                    </div>
+                    <div class="metric-card">
+                        <div id="metric-total-waypoints" class="metric-value">0</div>
+                        <div class="metric-label">Active Waypoints Deployed</div>
+                    </div>
+                </div>
 
-        <div class="table-section-title">🎯 Adult Catcher Tracking Grid</div>
-        <div class="table-scroller"><table id="sheet-catcher-table"><thead><tr id="head-catcher"><th>Loading Structural Headers...</th></tr></thead><tbody id="body-catcher"></tbody></table></div>
+                <div class="btn-group" style="margin-bottom: 20px;">
+                    <button class="btn" onclick="loadDashboardHomeMetrics()">🔄 Refresh Global Tables</button>
+                </div>
+
+                <h4>Active Game Groups Hierarchy Table</h4>
+                <div class="table-responsive">
+                    <table id="teams-table-display">
+                        <thead>
+                            <tr>
+                                <th>Group No</th>
+                                <th>Team Name</th>
+                                <th>Category Classification</th>
+                                <th>Current Score</th>
+                                <th>Gained Pts</th>
+                                <th>Lost Pts</th>
+                                <th>Intercepted Count</th>
+                                <th>Catcher Captures</th>
+                                <th>Passport Security Token</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="9" style="text-align:center; color:var(--text-muted);">Querying network streams...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📝 Universal Real-Time Audit Log Timeline</h3>
+                <p class="card-description">Displays raw, immutable security entries generated sequentially by team explorers, field catchers, and checkpoint monitors.</p>
+                
+                <div class="table-responsive" style="max-height: 450px;">
+                    <table id="logs-table-display">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Target Group</th>
+                                <th>Action Signature</th>
+                                <th>Marker Context</th>
+                                <th>Dynamic Points Adjustment</th>
+                                <th>Telemetry Coordinates</th>
+                                <th>Verbose Activity Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Awaiting action synchronization events...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-checkpoint" class="tab-content">
+            <div class="card">
+                <h3>🛡️ Central Station Checkpoint Scanning Canvas</h3>
+                <p class="card-description">Configure your explicit station checkpoint context workspace assignment. Use the live camera scanner array to verify incoming team passports instantly.</p>
+                
+                <div class="form-group">
+                    <label for="checkpoint-station-selector">Select Active Station Assignment Context:</label>
+                    <select id="checkpoint-station-selector" class="form-control" style="max-width: 400px;">
+                        <option value="Checkpoint Alpha">Base Camp - Checkpoint Alpha</option>
+                        <option value="Checkpoint Bravo">Northern Outpost - Checkpoint Bravo</option>
+                        <option value="Checkpoint Charlie">Eastern Ridge - Checkpoint Charlie</option>
+                        <option value="Checkpoint Delta">Forest Edge - Checkpoint Delta</option>
+                        <option value="Checkpoint Echo">Valley Basin - Checkpoint Echo</option>
+                    </select>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="initiateCheckpointScanner()">⚡ Boot Scanner Module</button>
+                    <button class="btn btn-secondary" onclick="triggerCameraSwitchCycle()">🔄 Switch Camera Track</button>
+                    <button class="btn btn-danger" onclick="killCheckpointScannerStream()">Stop Stream</button>
+                </div>
+
+                <div class="scanner-viewport-wrapper">
+                    <div id="checkpoint-scanner-preview"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-ingestion" class="tab-content">
+            <div class="card">
+                <h3>📥 Master Spreadsheet Matrix Ingestion Router</h3>
+                <p class="card-description">Populate or factory-reset system assets using structured Excel matrices. The backend automatically isolates blank rows and substitutes random codes for missing elements.</p>
+                
+                <div style="margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 25px;">
+                    <h4>Step A: Deploy Team & Category Registry Sheet</h4>
+                    <p class="card-description" style="margin-top:-10px;">Upload workbook rows mapping columns explicitly labeled: <code>group_number</code>, <code>name</code>, and <code>category</code>. (Missing 8-digit unique passport backup tokens are auto-generated).</p>
+                    <div class="form-group">
+                        <input type="file" id="upload-teams-excel" accept=".xlsx, .xls" class="form-control" style="max-width: 500px; display:inline-block; margin-right:10px;" />
+                        <button class="btn" onclick="processExcelUpload('TEAMS')">Deploy Teams Pipeline</button>
+                    </div>
+                </div>
+
+                <div>
+                    <h4>Step B: Deploy Waypoints & Field Target Objects Sheet</h4>
+                    <p class="card-description" style="margin-top:-10px;">Ingest markers mapping columns: <code>code</code>, <code>name</code>, <code>type</code>, and <code>target_group</code>. <strong>Note:</strong> Columns set to <code>AUTO_GEN</code> or legacy templates (like W01/W02) automatically receive unguessable 6-digit access codes.</p>
+                    <div class="form-group">
+                        <input type="file" id="upload-waypoints-excel" accept=".xlsx, .xls" class="form-control" style="max-width: 500px; display:inline-block; margin-right:10px;" />
+                        <button class="btn" onclick="processExcelUpload('EVENTS')">Deploy Waypoints Pipeline</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🗺️ Active Registered Waypoints Reference Grid</h3>
+                <p class="card-description">Lists current operational waypoint objects and their dynamic 6-digit access parameters generated by the system.</p>
+                <div class="table-responsive">
+                    <table id="waypoints-table-display">
+                        <thead>
+                            <tr>
+                                <th>Unique Code Tracker</th>
+                                <th>Location Label Name</th>
+                                <th>Classification Type</th>
+                                <th>Target Group Restriction Rule</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">No waypoints uploaded or parsed in current profile context.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-accounts" class="tab-content">
+            <div class="card">
+                <h3>👥 Staff Registry & Secondary Console Accounts</h3>
+                <p class="card-description">Provision restricted terminal login entries for checkpoint marshals, safety monitors, and secondary field directors.</p>
+                
+                <div style="max-width: 500px; margin-bottom: 30px;">
+                    <h4>Create New Staff Access Entry</h4>
+                    <div class="form-group">
+                        <label>Target Account Username Identifier:</label>
+                        <input type="text" id="new-staff-username" class="form-control" placeholder="MarshalAlpha" />
+                    </div>
+                    <div class="form-group">
+                        <label>Secure System PIN Access Matrix (Numeric):</label>
+                        <input type="password" id="new-staff-pin" class="form-control" placeholder="4-6 Digits" maxlength="8" />
+                    </div>
+                    <button class="btn" onclick="submitNewStaffAccountCreation()">Register Staff Profile</button>
+                </div>
+
+                <h4>Active Authorized Administrative Logins</h4>
+                <ul id="staff-accounts-list-target" class="ul-registry">
+                    <li>Loading staff authentication configuration tracking...</li>
+                </ul>
+                
+                <div style="margin-top: 15px;">
+                    <button class="btn btn-danger" onclick="purgeAllStaffCredentials()">Purge Sub-Staff Logins</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-danger" class="tab-content">
+            <div class="card" style="border: 2px solid var(--danger);">
+                <h3 style="color: var(--danger);">⚠️ High-Risk Core Factory Utilities</h3>
+                <p class="card-description">Destructive structural operations impacting systemic integrity. Actions triggered inside this command card are permanent and bypass typical staging logic.</p>
+                
+                <div style="background: #fff5f5; border-left: 4px solid var(--danger); padding: 15px; border-radius: 4px; margin-bottom: 25px;">
+                    <strong style="color:var(--danger)">Structural Warning Notice:</strong> Wiping the databank completely clears team score paths, runtime activity logs, and coordinates. This action restores the system to a clean, factory-fresh layout.
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-danger" onclick="executeMasterDatabasePurgeWipe()">⚠️ WIPE GLOBAL DATA ENGINE STORAGE TABLES</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <div id="panel-checkpoint" class="workspace-panel">
-        <h2>Station Checkpoint Processing Console</h2>
-        <p>Select a checkpoint node location identifier below to initialize scanning channels or execute a fallback entry bypass.</p>
-        <div class="form-card" id="checkpoint-stations-btn-box"></div>
-
-        <div class="form-card" id="checkpoint-camera-sub-box" style="display: none; text-align: center;">
-            <h3 id="checkpoint-active-scanning-header" style="font-size: 18px; color: #311b92;">Processing Station Checkpoint</h3>
-            
-            <div style="max-width: 340px; margin: 16px auto; border-radius: 16px; overflow: hidden; border: 3px solid #4a148c; background: #000; box-shadow: 0 4px 14px rgba(0,0,0,0.25);">
-                <div id="checkpoint-camera-element" style="width: 100%;"></div>
-            </div>
-
-            <div style="margin: 16px 0;">
-                <button class="action-btn" onclick="toggleCheckpointCameraDirection()" style="background-color: #0288d1; margin-right: 12px;">🔄 Switch Camera Sensor</button>
-                <button class="action-btn danger-btn" onclick="terminateCheckpointScanningStream()">Close Active Interface</button>
-            </div>
-
-            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;">
-            
-            <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px dashed #cbd5e1; display: inline-block; text-align: center; max-width: 400px;">
-                <h4 style="margin-top: 0; margin-bottom: 6px; color: #1e293b;">Manual Security Override Input</h4>
-                <p style="font-size: 12px; color: #64748b; margin-top: 0; margin-bottom: 14px;">If optical hardware cannot capture a code, input the team's unguessable **8-digit random security code**:</p>
-                <input type="text" class="text-input" id="checkpoint-manual-field" placeholder="e.g. 84029143" style="float: none; margin-right: 0; margin-bottom: 12px; display: block; width: 100%; text-align: center;">
-                <button class="action-btn" onclick="submitManualCheckpointCheckin()" style="background-color: #16a34a; width: 100%; margin-top: 0;">Execute Secure Check-In</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="panel-qrcodes" class="workspace-panel">
-        <h2>QR Code Storage Directory & Database Upload Engines</h2>
-        <p>Upload raw tracking datasheets or review the generated unguessable keys matrix.</p>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 32px;">
-            <div class="form-card">
-                <h3>1. Ingest Fleet / People Information Registry</h3>
-                <input type="file" id="upload-input-people" accept=".xlsx, .xls" style="margin-bottom: 16px; display: block;" onchange="inspectSpreadsheetFile(this, 'people')">
-                <button class="action-btn" onclick="processAndForceUploadFile('people')">Upload Registry Sheet</button>
-                <button class="action-btn template-btn" onclick="downloadTemplateFile('people')">Get Sheet Template</button>
-                <div id="diagnostic-people" class="diagnostic-log">No spreadsheet profile staged for testing.</div>
-            </div>
-            <div class="form-card">
-                <h3>2. Ingest Waypoint Infrastructure Layout Map</h3>
-                <input type="file" id="upload-input-event" accept=".xlsx, .xls" style="margin-bottom: 16px; display: block;" onchange="inspectSpreadsheetFile(this, 'event')">
-                <button class="action-btn" onclick="processAndForceUploadFile('event')">Upload Infrasheet Map</button>
-                <button class="action-btn template-btn" onclick="downloadTemplateFile('event')">Get Node Template</button>
-                <div id="diagnostic-event" class="diagnostic-log">No infrastructure grid staged for testing.</div>
-            </div>
-        </div>
-
-        <div class="form-card">
-            <h3>Directory Viewport Filters</h3>
-            <div class="qr-action-row">
-                <button class="action-btn" onclick="renderFilteredQRDirectory('General')">General Portals</button>
-                <button class="action-btn" onclick="renderFilteredQRDirectory('Scout')">Scout Passports</button>
-                <button class="action-btn" onclick="renderFilteredQRDirectory('ESU')">ESU Passports</button>
-                <button class="action-btn" onclick="renderFilteredQRDirectory('Catcher')">Catcher Passports</button>
-                <button class="action-btn" onclick="renderFilteredQRDirectory('Waypoints')">Infrastructure Waypoints</button>
-                <input type="text" class="text-input" id="qr-search-field" placeholder="Search target indices..." oninput="evaluateQRSearchFilter()">
-            </div>
-        </div>
-
-        <div class="qr-dir-grid" id="qr-directory-canvas-target"></div>
-    </div>
-
-    <div id="panel-settings" class="workspace-panel">
-        <h2>System Accounts Control Bench</h2>
-        <p>Configure staff operational codes or perform structural storage initialization purges.</p>
-        
-        <div class="form-card">
-            <h3>Provision New Sub-Staff Identity</h3>
-            <input type="text" class="text-input" id="new-staff-username" placeholder="Username / Handle ID">
-            <input type="text" class="text-input" id="new-staff-pin" placeholder="Numeric Security PIN" maxlength="6">
-            <button class="action-btn" onclick="executeCreateStaffAccount()">Deploy Access Profile</button>
-        </div>
-
-        <div class="form-card">
-            <h3>Active Operational Sub-Staff Profiles Manifest</h3>
-            <ul id="staff-registry-list-render" style="padding-left: 20px; line-height: 2.2; color: #334155; font-weight: 600;"></ul>
-            <button class="action-btn danger-btn" onclick="purgeAllStaffCredentials()" style="margin-top: 12px;">Purge All Sub-Staff Permissions</button>
-        </div>
-
-        <div class="form-card" style="border: 2px solid #ef4444; background-color: #fef2f2;">
-            <h3 style="color: #b91c1c; margin-bottom: 8px;">⚠️ CRITICAL FACTORY SYSTEM PURGE INITIALIZATION</h3>
-            <p style="color: #991b1b; margin-bottom: 16px;">Wipes entirely all tables in database storage including tracking telemetry metrics, logging history rows, claims, and active squads.</p>
-            <button class="action-btn danger-btn" onclick="executeMasterDatabasePurgeWipe()">Purge Global Database Storage Tables</button>
-        </div>
-    </div>
-
-    <div class="popup-modal" id="checkpoint-success-modal">
-        <div class="modal-content">
-            <h1 style="color: #16a34a; font-size: 46px; margin: 0 0 12px 0;">✓</h1>
-            <h3 id="checkpoint-modal-msg-box" style="font-size: 18px; margin-bottom: 20px; color: #1e293b;">Action Logged Successfully</h3>
-            <button class="action-btn" onclick="dismissCheckinSuccessModal()" style="margin-top: 0; background-color: #1e293b;">Close Console View</button>
-        </div>
-    </div>
+    <footer>
+        Operation Chameleon Control Center Dashboard Terminal Engine • Solihull District Scout Wide-Game Systems Group.
+    </footer>
 
     <script>
-        const BACKEND_URL = 'https://scouts-backend-24lj.onrender.com';
-        let matrixCache = { teams: [], logs: [], events: [] };
+        const BACKEND_URL = window.location.origin.includes('localhost') ? 'http://localhost:3000' : '';
         
-        let activeCheckpointScanner = null;
-        let selectedCheckpointStationID = null;
-        let checkpointFacingMode = "environment"; 
-        let currentQRFilterSelection = 'General';
+        // SCANNER INSTANCE CONTROLS
+        let activeScannerInstance = null;
+        let activeCameraId = null;
+        let hardwareCamerasList = [];
+        let runningCameraIndex = 0;
 
-        function switchMgmtTab(target, triggerLink) {
-            document.querySelectorAll('.workspace-panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        /**
+         * Global Tab Navigation Router Switch
+         */
+        function switchActiveTab(event, tabId) {
+            const tabs = document.querySelectorAll('.tab-content');
+            const tabButtons = document.querySelectorAll('.tab-btn');
             
-            document.getElementById(`panel-${target}`).classList.add('active');
-            triggerLink.classList.add('active');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
 
-            terminateCheckpointScanningStream();
-
-            if(target === 'home') { loadDashboardHomeMetrics(); }
-            if(target === 'teamdata') { fetchMasterMatrixData(); }
-            if(target === 'checkpoint') { buildCheckpointDashboardStationInterfaces(); }
-            if(target === 'settings') { refreshStaffRegistryProfilesList(); }
+            // Gracefully halt video frame capture engines if navigating away from the scanner console tab
+            if (tabId !== 'tab-checkpoint') {
+                killCheckpointScannerStream();
+            }
         }
 
-        function downloadTemplateFile(templateType) {
-            let columnHeaders = [];
-            let mockRows = [];
-            let fileName = "";
+        /**
+         * Initialize, authorize, and spin up scanner engines mapping local hardware lenses
+         */
+        async function initiateCheckpointScanner() {
+            try {
+                if (activeScannerInstance) {
+                    await activeScannerInstance.stop().catch(() => {});
+                    activeScannerInstance = null;
+                }
 
-            if (templateType === 'people') {
-                fileName = "Operation_Chameleon_People_Registry_Template.xlsx";
-                columnHeaders = ["Group Number", "Scout Group", "Category", "No Of People"];
-                mockRows = [
-                    ["1", "1st Solihull (A)", "Scout", "5"],
-                    ["2", "Knowle Explorer Unit", "ESU", "4"],
-                    ["C1", "District Catch Team Black", "Catcher", "3"]
-                ];
-            } else if (templateType === 'event') {
-                fileName = "Operation_Chameleon_Waypoint_Infrastructure_Template.xlsx";
-                columnHeaders = ["Code", "Type", "Target Group"];
-                mockRows = [
-                    ["AUTO_GEN", "Waypoint", "All"],
-                    ["AUTO_GEN", "Waypoint", "Scout"],
-                    ["CP1", "Checkpoint", "All"]
-                ];
+                activeScannerInstance = new Html5Qrcode("checkpoint-scanner-preview");
+                hardwareCamerasList = await Html5Qrcode.getCameras();
+
+                if (hardwareCamerasList && hardwareCamerasList.length > 0) {
+                    // Start from the last camera (typically environmental back-facing lens tracks)
+                    runningCameraIndex = hardwareCamerasList.length - 1;
+                    activeCameraId = hardwareCamerasList[runningCameraIndex].id;
+                    await deploySelectedCameraContext();
+                } else {
+                    alert("❌ Device Configuration Error: No physical video cameras detected or capture permissions refused.");
+                }
+            } catch(e) {
+                alert("Scanner Initialization failure: " + e.message);
+            }
+        }
+
+        /**
+         * Starts streaming frames inside the target viewport view frame
+         */
+        async function deploySelectedCameraContext() {
+            if (!activeScannerInstance || !activeCameraId) return;
+            
+            const elementBox = document.getElementById("checkpoint-scanner-preview");
+            if (elementBox) elementBox.style.borderColor = "var(--border)";
+
+            await activeScannerInstance.start(
+                activeCameraId,
+                { fps: 15, qrbox: { width: 260, height: 260 } },
+                async (decodedText) => {
+                    console.log("🎯 QR code scanner frame intercept decoded:", decodedText);
+                    if (elementBox) elementBox.style.borderColor = "var(--success)"; // Success highlight
+                    
+                    const chosenStation = document.getElementById("checkpoint-station-selector").value;
+                    await sendCheckpointVerificationRequest(decodedText.trim(), chosenStation);
+                },
+                () => {} // Suppress telemetry logs to preserve execution processing speeds
+            ).catch(err => console.error("Hardware acquisition stream drop error:", err));
+        }
+
+        /**
+         * Steps camera indexing forward, closing previous pipelines to loop lenses safely
+         */
+        async function triggerCameraSwitchCycle() {
+            if (!activeScannerInstance) {
+                alert("Please initialize the camera stream matrix before attempting a device toggle switch.");
+                return;
+            }
+            if (hardwareCamerasList.length <= 1) {
+                alert("ℹ️ Interface Alert: Only a single video capture track lens discovered on this hardware profile.");
+                return;
             }
 
-            const masterMatrix = [columnHeaders, ...mockRows];
-            const workBook = XLSX.utils.book_new();
-            const workSheet = XLSX.utils.aoa_to_sheet(masterMatrix, { cellDates: false, raw: true });
-            
-            XLSX.utils.book_append_sheet(workBook, workSheet, "Sheet1");
-            XLSX.writeFile(workBook, fileName);
+            try {
+                await activeScannerInstance.stop();
+                runningCameraIndex = (runningCameraIndex + 1) % hardwareCamerasList.length;
+                activeCameraId = hardwareCamerasList[runningCameraIndex].id;
+                await deploySelectedCameraContext();
+            } catch(e) {
+                console.error("Hardware context swapping error:", e);
+            }
         }
 
-        function inspectSpreadsheetFile(input, type) {
-            const file = input.files[0];
-            if (!file) return;
+        /**
+         * Halts the active streaming camera and returns the viewport border styles to grey standard
+         */
+        function killCheckpointScannerStream() {
+            if (activeScannerInstance) {
+                activeScannerInstance.stop().catch(() => {});
+                activeScannerInstance = null;
+                const elementBox = document.getElementById("checkpoint-scanner-preview");
+                if (elementBox) elementBox.style.borderColor = "var(--border)";
+            }
+        }
+
+        /**
+         * Dispatches scanned token metrics directly to the passport validation engine
+         */
+        async function sendCheckpointVerificationRequest(passportToken, checkpointName) {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/client/process-passport`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        operatorId: "HQ_MGMT",
+                        scannedPassportString: passportToken, // Pure, raw 8-digit randomized backup code token
+                        currentCheckpointContext: checkpointName
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert(`✅ Checkpoint Ingress Success:\n${data.message}`);
+                } else {
+                    alert(`❌ Verification Denied:\n${data.message}`);
+                }
+            } catch(err) {
+                alert("Data-link exception error: Communications link timed out or target infrastructure unreachable.");
+            }
+        }
+
+        /**
+         * Ingests Excel spreadsheet workbooks, mapping structures to database tables directly
+         */
+        function processExcelUpload(targetType) {
+            const inputId = targetType === 'TEAMS' ? 'upload-teams-excel' : 'upload-waypoints-excel';
+            const endpoint = targetType === 'TEAMS' ? '/api/manage/inject-people-json' : '/api/manage/inject-event-json';
+            const fileInput = document.getElementById(inputId);
+            
+            if (!fileInput.files.length) {
+                alert("Ingestion Error: Please drop or select a valid spreadsheet target container object first.");
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
+                const dataArray = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(dataArray, { type: 'array' });
                 const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet);
-                
-                const debugDiv = document.getElementById(`diagnostic-${type}`);
-                debugDiv.innerText = `Detected structural sheet: "${firstSheetName}"\nSample payload mapping layout:\n` + JSON.stringify(json.slice(0, 2), null, 2);
-            };
-            reader.readAsArrayBuffer(file);
-        }
+                const cleanJsonPayload = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
 
-        function processAndForceUploadFile(type) {
-            const picker = document.getElementById(`upload-input-${type}`);
-            const file = picker.files[0];
-            if (!file) { alert("Please select a target spreadsheet file first."); return; }
-
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(worksheet);
-
-                let parsedPayload = [];
-
-                if (type === 'people') {
-                    parsedPayload = rows.map(r => {
-                        let num = r['Group Number'] || r['group_number'] || r['Team No'] || r['Number'] || '';
-                        let grp = r['Scout Group'] || r['Group Scout Group'] || r['scout_group'] || r['Name'] || '';
-                        let cat = r['Category'] || r['Group Category'] || r['category'] || 'Scout';
-                        let size = r['No of People'] || r['no_of_people'] || r['Size'] || 1;
-
-                        cat = String(cat).trim();
-                        if (cat.toLowerCase().startsWith("scout")) cat = "Scout";
-                        if (cat.toLowerCase().startsWith("esu") || cat.toLowerCase().startsWith("expl")) cat = "ESU";
-                        if (cat.toLowerCase().startsWith("catch")) cat = "Catcher";
-
-                        return {
-                            group_number: String(num).trim(),
-                            scout_group: String(grp).trim(),
-                            category: cat,
-                            no_of_people: parseInt(size) || 1
-                        };
-                    }).filter(item => item.group_number !== '');
-
-                } else {
-                    parsedPayload = rows.map(r => {
-                        let code = r['Checkpoint / Waypoint No'] || r['Code'] || r['code'] || r['No'] || '';
-                        let typeVal = r['Type'] || r['type'] || 'Waypoint';
-                        let target = r['Group'] || r['Target Group'] || r['target_group'] || 'All';
-
-                        typeVal = String(typeVal).trim();
-                        if (typeVal.toLowerCase().startsWith("way")) typeVal = "Waypoint";
-                        if (typeVal.toLowerCase().startsWith("check")) typeVal = "Checkpoint";
-
-                        return {
-                            code: String(code).trim(),
-                            type: typeVal,
-                            target_group: String(target).trim()
-                        };
-                    }).filter(item => item.code !== '');
-                }
-
-                if(parsedPayload.length === 0) {
-                    alert("Spreadsheet mapping structure verification failed. Array empty.");
-                    return;
-                }
-
-                try {
-                    let endpoint = type === 'people' ? 'inject-people-json' : 'inject-event-json';
-                    let response = await fetch(`${BACKEND_URL}/api/manage/${endpoint}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ payload: parsedPayload })
-                    });
-                    let result = await response.json();
-                    
-                    if (result.success) {
-                        alert(`✅ Database updated! Successfully added ${result.count} data nodes.`);
-                        picker.value = '';
+                fetch(`${BACKEND_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payload: cleanJsonPayload })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`🎉 Ingestion Vector Executed Successfully:\n${data.count} objects correctly parsed into the system cache.`);
                         loadDashboardHomeMetrics();
                     } else {
-                        alert(`❌ Ingestion Error: ${result.message}`);
+                        alert("❌ Database Ingestion Matrix Rejection Error:\n" + data.message);
                     }
-                } catch (err) {
-                    alert("❌ Transmission bridge pipeline dropped.");
-                }
+                })
+                .catch(() => alert("Pipeline connection dropped. Network trace failed."));
             };
-            reader.readAsArrayBuffer(file);
+            reader.readAsArrayBuffer(fileInput.files[0]);
         }
 
+        /**
+         * Refreshes dashboard tracking blocks, score arrays, and event logging logs
+         */
         function loadDashboardHomeMetrics() {
             fetch(`${BACKEND_URL}/api/manage/master-matrix`)
                 .then(res => res.json())
                 .then(data => {
-                    matrixCache = data;
-                    document.getElementById('m-scout-count').innerText = data.teams.filter(t => t.category === 'Scout').length;
-                    document.getElementById('m-esu-count').innerText = data.teams.filter(t => t.category === 'ESU').length;
-                    document.getElementById('m-catcher-count').innerText = data.teams.filter(t => t.category === 'Catcher').length;
+                    if (!data.success) return;
+
+                    // Update Top Counter Badges
+                    document.getElementById("metric-total-teams").innerText = data.teams.length;
+                    document.getElementById("metric-total-waypoints").innerText = data.events.length;
                     
-                    document.getElementById('m-wp-scans').innerText = data.logs.filter(l => l.action_type === 'WAYPOINT').length;
-                    document.getElementById('m-catches-total').innerText = data.logs.filter(l => l.action_type === 'CATCH').length;
+                    let totalPointsSum = 0;
+                    let totalCatchesCount = 0;
+
+                    // Rebuild Teams Table Template Array rows
+                    const teamsBody = document.querySelector("#teams-table-display tbody");
+                    teamsBody.innerHTML = "";
                     
-                    let gained = 0, lost = 0;
-                    data.teams.forEach(t => { gained += t.points_gained; lost += t.points_lost; });
-                    document.getElementById('m-pts-gained').innerText = gained;
-                    document.getElementById('m-pts-lost').innerText = lost;
-                    
-                    fetch(`${BACKEND_URL}/api/manage/users/list`)
-                        .then(res => res.json()).then(res => {
-                            document.getElementById('m-staff-count').innerText = res.users.length;
+                    if (data.teams.length === 0) {
+                        teamsBody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No teams registered. Initial database tables are currently empty.</td></tr>`;
+                    } else {
+                        data.teams.forEach(t => {
+                            totalPointsSum += (t.points || 0);
+                            totalCatchesCount += (t.caught_count || 0);
+                            
+                            const catClass = String(t.category).toLowerCase() === 'catcher' ? 'badge-catcher' : 'badge-runner';
+                            
+                            teamsBody.innerHTML += `<tr>
+                                <td><strong>${t.group_number}</strong></td>
+                                <td>${t.name}</td>
+                                <td><span class="badge ${catClass}">${t.category}</span></td>
+                                <td><strong>${t.points}</strong></td>
+                                style text values
+                                <td style="color:var(--success)">+${t.points_gained}</td>
+                                <td style="color:var(--danger)">-${t.points_lost}</td>
+                                <td>${t.caught_count} times</td>
+                                <td>${t.groups_caught} hits</td>
+                                <td><code>${t.backup_code || 'Unassigned'}</code></td>
+                            </tr>`;
                         });
-                }).catch(e => console.error(e));
+                    }
+
+                    document.getElementById("metric-total-points").innerText = totalPointsSum;
+                    document.getElementById("metric-total-catches").innerText = totalCatchesCount;
+
+                    // Rebuild Audit Logs Matrix View Rows
+                    const logsBody = document.querySelector("#logs-table-display tbody");
+                    logsBody.innerHTML = "";
+                    
+                    if (!data.logs || data.logs.length === 0) {
+                        logsBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">The operational event log framework database returns clean entries currently.</td></tr>`;
+                    } else {
+                        data.logs.forEach(l => {
+                            const timeToken = new Date(l.created_at).toLocaleTimeString();
+                            let colorModifier = "inherit";
+                            if(l.action_type === 'CATCH') colorModifier = "var(--danger)";
+                            if(l.action_type === 'WAYPOINT') colorModifier = "var(--success)";
+                            
+                            logsBody.innerHTML += `<tr>
+                                <td><small>${new Date(l.created_at).toDateString()} - ${timeToken}</small></td>
+                                <td><strong>Group ${l.team_id}</strong></td>
+                                <td><span style="font-weight:700; color:${colorModifier}">${l.action_type}</span></td>
+                                <td><code>${l.target_id || '-'}</code></td>
+                                <td><strong>${l.points_changed || 0}</strong></td>
+                                <td><small>${l.latitude ? `${Number(l.latitude).toFixed(5)}, ${Number(l.longitude).toFixed(5)}` : 'No Tracking Data'}</small></td>
+                                <td>${l.details}</td>
+                            </tr>`;
+                        });
+                    }
+
+                    // Rebuild Active Waypoint Target Parameter Display rows
+                    const waypointsBody = document.querySelector("#waypoints-table-display tbody");
+                    waypointsBody.innerHTML = "";
+                    
+                    if (data.events.length === 0) {
+                        waypointsBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">No waypoint objects stored. Use ingestion options to map game space variables.</td></tr>`;
+                    } else {
+                        data.events.forEach(w => {
+                            waypointsBody.innerHTML += `<tr>
+                                <td><code>${w.code}</code></td>
+                                <td><strong>${w.name}</strong></td>
+                                <td>${w.type || 'Waypoint'}</td>
+                                <td><span class="badge badge-leader">${w.target_group || 'All'}</span></td>
+                            </tr>`;
+                        });
+                    }
+                });
+            
+            refreshStaffRegistryProfilesList();
         }
 
-        function fetchMasterMatrixData() {
-            fetch(`${BACKEND_URL}/api/manage/master-matrix`)
+        /**
+         * Fetch and render live sub-staff account login credentials from storage indices
+         */
+        function refreshStaffRegistryProfilesList() {
+            fetch(`${BACKEND_URL}/api/manage/users/list`)
                 .then(res => res.json())
                 .then(data => {
-                    matrixCache = data;
-                    renderDynamicMatrixGridSheet('Scout');
-                    renderDynamicMatrixGridSheet('ESU');
-                    renderDynamicMatrixGridSheet('Catcher');
-                });
-        }
-
-        function renderDynamicMatrixGridSheet(categoryKey) {
-            const filteredTeams = matrixCache.teams.filter(t => t.category === categoryKey);
-            const targets = matrixCache.events.filter(e => e.type === 'Waypoint' && (e.target_group === 'All' || e.target_group.includes(categoryKey)));
-            const checkStations = matrixCache.events.filter(e => e.type === 'Checkpoint');
-
-            const headingRow = document.getElementById(`head-${categoryKey.toLowerCase()}`);
-            const bodyRow = document.getElementById(`body-${categoryKey.toLowerCase()}`);
-
-            // Included unguessable random security keys directly inside the columns header arrays
-            let headerHTML = `<th>Team ID</th><th>Scout Group</th><th>Size</th><th>Logged In</th><th>Secure Token Pin</th>`;
-            targets.forEach(w => headerHTML += `<th>WP (6-Digit Code)</th>`);
-            checkStations.forEach(c => headerHTML += `<th>Station ${c.code}</th>`);
-            headerHTML += `<th>Gained</th><th>Lost</th><th>Live Score</th><th>${categoryKey === 'Catcher' ? 'Captures' : 'Caught Count'}</th><th>Grace Clock</th>`;
-            headingRow.innerHTML = headerHTML;
-
-            bodyRow.innerHTML = '';
-            if(filteredTeams.length === 0) {
-                bodyRow.innerHTML = `<tr><td colspan="15" style="text-align:center; color:#94a3b8; padding:20px;">No operational datasets match this categorical selector.</td></tr>`;
-                return;
-            }
-
-            filteredTeams.forEach(t => {
-                const isLoggedIn = t.pin ? '🟢 Online' : '🔴 Offline';
-                // Dynamic negative score checking layout logic applied during string compilation
-                const scoreStyle = t.points < 0 ? 'color:#dc2626; font-weight:900;' : 'font-weight:700; color:#16a34a;';
-                
-                let rowHTML = `<tr><td><strong>${t.group_number}</strong></td><td>${t.scout_group}</td><td>${t.no_of_people}</td><td>${isLoggedIn}</td><td><code style="font-weight:700; color:#4a148c; font-size:13px;">${t.backup_code || '--------'}</code></td>`;
-                
-                targets.forEach(w => {
-                    const matchLog = matrixCache.logs.find(l => l.team_id === t.group_number && l.target_id === w.code && l.action_type === 'WAYPOINT');
-                    if(matchLog) {
-                        const timeStr = new Date(matchLog.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                        rowHTML += `<td style="background-color:#f0fdf4; color:#16a34a; font-weight:700;">✓ (${timeStr})</td>`;
-                    } else { rowHTML += `<td style="color:#cbd5e1;">—</td>`; }
-                });
-
-                checkStations.forEach(c => {
-                    const matchLog = matrixCache.logs.find(l => l.team_id === t.group_number && l.target_id === c.code && l.action_type === 'CHECKIN');
-                    if(matchLog) {
-                        const timeStr = new Date(matchLog.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                        rowHTML += `<td style="background-color:#eff6ff; color:#2563eb; font-weight:700;">✓ (${timeStr})</td>`;
-                    } else { rowHTML += `<td style="color:#cbd5e1;">—</td>`; }
-                });
-
-                let graceStr = '00:00';
-                if(t.last_caught_at) {
-                    const elapsed = new Date() - new Date(t.last_caught_at);
-                    const rem = 15 - (elapsed / 1000 / 60);
-                    if(rem > 0) {
-                        const mins = Math.floor(rem); const secs = Math.floor((rem % 1) * 60);
-                        graceStr = `<span style="color:#ea580c; font-weight:700;">🛡️ ${mins}:${String(secs).padStart(2,'0')}</span>`;
-                    }
-                }
-
-                rowHTML += `<td>+${t.points_gained}</td><td>-${t.points_lost}</td><td style="${scoreStyle}">${t.points}</td><td>${categoryKey === 'Catcher' ? t.groups_caught : t.caught_count}</td><td>${graceStr}</td></tr>`;
-                bodyRow.innerHTML += rowHTML;
-            });
-        }
-
-        function buildCheckpointDashboardStationInterfaces() {
-            fetch(`${BACKEND_URL}/api/manage/master-matrix`)
-                .then(res => res.json()).then(data => {
-                    matrixCache = data;
-                    const container = document.getElementById('checkpoint-stations-btn-box');
-                    container.innerHTML = '';
-                    const checkStations = data.events.filter(e => e.type === 'Checkpoint');
-
-                    if(checkStations.length === 0) {
-                        container.innerHTML = '<p style="color:#64748b; margin: 0;">No active check-in station node endpoints have been mapped inside system space yet.</p>';
+                    const listContainer = document.getElementById("staff-accounts-list-target");
+                    listContainer.innerHTML = "";
+                    
+                    if (!data.users || data.users.length === 0) {
+                        listContainer.innerHTML = `<li>No secondary sub-staff account credentials discovered in current context.</li>`;
                         return;
                     }
 
-                    checkStations.forEach(c => {
-                        container.innerHTML += `<button class="action-btn" style="margin-right:12px; margin-bottom:12px; background-color:#2563eb; box-shadow:0 4px 10px rgba(37,99,235,0.2);" onclick="initializeCheckpointScanningSessionStream('${c.code}')">Open Checkpoint Terminal: ${c.code}</button>`;
+                    data.users.forEach(u => {
+                        const delAction = u.username !== 'BenLewis1' 
+                            ? `<button class="btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="executeDeleteStaffRow('${u.username}')">Delete Profile</button>` 
+                            : `<strong><span class="badge badge-leader">(Master Account Owner)</span></strong>`;
+                        
+                        listContainer.innerHTML += `<li>
+                            <div>Authorized User ID: <strong>${u.username}</strong></div>
+                            <div>${delAction}</div>
+                        </li>`;
                     });
                 });
         }
 
-        function initializeCheckpointScanningSessionStream(stationCode) {
-            terminateCheckpointScanningStream(); 
-            
-            selectedCheckpointStationID = stationCode;
-            document.getElementById('checkpoint-active-scanning-header').innerText = `Active Terminal Loop: Checkpoint Node (${stationCode})`;
-            document.getElementById('checkpoint-camera-sub-box').style.display = 'block';
-            document.getElementById('checkpoint-manual-field').value = '';
+        /**
+         * Submits structured secondary account targets inside the staff database arrays
+         */
+        function submitNewStaffAccountCreation() {
+            const usernameInput = document.getElementById("new-staff-username").value.trim();
+            const pinInput = document.getElementById("new-staff-pin").value.trim();
 
-            activeCheckpointScanner = new Html5Qrcode("checkpoint-camera-element");
-            startCheckpointCameraEngine();
-        }
-
-        function startCheckpointCameraEngine() {
-            if (!activeCheckpointScanner) return;
-            activeCheckpointScanner.start(
-                { facingMode: checkpointFacingMode }, 
-                { fps: 12, qrbox: 240 },
-                (decodedText) => { transmitCheckpointCheckinAction(decodedText); }, 
-                () => {}
-            ).catch(() => {});
-        }
-
-        function toggleCheckpointCameraDirection() {
-            if (!activeCheckpointScanner) return;
-            checkpointFacingMode = (checkpointFacingMode === "environment") ? "user" : "environment";
-            activeCheckpointScanner.stop().then(() => {
-                startCheckpointCameraEngine();
-            }).catch(() => startCheckpointCameraEngine());
-        }
-
-        function submitManualCheckpointCheckin() {
-            let antiCheatToken = document.getElementById('checkpoint-manual-field').value.trim();
-            if(!antiCheatToken) { alert("Please type the team's security verification token code value."); return; }
-            transmitCheckpointCheckinAction(antiCheatToken);
-        }
-
-        function transmitCheckpointCheckinAction(passportTokenString) {
-            fetch(`${BACKEND_URL}/api/client/process-passport`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    operatorId: 'MANAGEMENT_DESK',
-                    scannedPassportString: String(passportTokenString).trim(),
-                    currentCheckpointContext: selectedCheckpointStationID
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.success) {
-                    document.getElementById('checkpoint-manual-field').value = '';
-                    document.getElementById('checkpoint-modal-msg-box').innerText = data.message;
-                    document.getElementById('checkpoint-success-modal').style.display = 'flex';
-                    loadDashboardHomeMetrics();
-                } else { alert(`❌ Authentication Rejection: ${data.message}`); }
-            }).catch(() => alert("❌ Target pipeline dropped."));
-        }
-
-        function dismissCheckinSuccessModal() {
-            document.getElementById('checkpoint-success-modal').style.display = 'none';
-        }
-
-        function terminateCheckpointScanningStream() {
-            document.getElementById('checkpoint-camera-sub-box').style.display = 'none';
-            if(activeCheckpointScanner) {
-                activeCheckpointScanner.stop().then(() => { activeCheckpointScanner = null; }).catch(()=>{ activeCheckpointScanner = null; });
-            }
-        }
-
-        function renderFilteredQRDirectory(filterType) {
-            currentQRFilterSelection = filterType;
-            fetch(`${BACKEND_URL}/api/manage/master-matrix`)
-                .then(res => res.json()).then(data => {
-                    matrixCache = data;
-                    evaluateQRSearchFilter();
-                });
-        }
-
-        function evaluateQRSearchFilter() {
-            const query = document.getElementById('qr-search-field').value.trim().toLowerCase();
-            const grid = document.getElementById('qr-directory-canvas-target');
-            grid.innerHTML = '';
-
-            let arrayCollection = [];
-
-            if(currentQRFilterSelection === 'General') {
-                const homePageURL = window.location.origin + '/';
-                arrayCollection = [{ id: 'PORTAL_ROOT', label: 'Scan to load wide-game user gateway login interface', codeString: homePageURL }];
-            } else if(['Scout', 'ESU', 'Catcher'].includes(currentQRFilterSelection)) {
-                // Security Fix: Generate team passports using unguessable random tokens to stop brute-forcing numbers
-                arrayCollection = matrixCache.teams.filter(t => t.category === currentQRFilterSelection)
-                    .map(t => ({ 
-                        id: `Team #${t.group_number}`, 
-                        label: `${t.scout_group} (Backup Pin: ${t.backup_code})`, 
-                        codeString: String(t.backup_code).trim() 
-                    }));
-            } else if(currentQRFilterSelection === 'Waypoints') {
-                // Security Fix: Mapped using the fully unguessable 6-digit random code keys
-                arrayCollection = matrixCache.events.filter(e => e.type === 'Waypoint').map(e => ({ 
-                    id: `Waypoint Node`, 
-                    label: `Secret Verification Key: ${e.code} (Designated Target: ${e.target_group})`, 
-                    codeString: String(e.code).trim() 
-                }));
-            }
-
-            const cleanFiltered = arrayCollection.filter(item => item.id.toLowerCase().includes(query) || item.label.toLowerCase().includes(query));
-
-            if(cleanFiltered.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:#64748b; padding:20px;">No operational keys align with active filtering rules.</div>';
+            if (!usernameInput || !pinInput) {
+                alert("Validation Failure: Complete both credentials forms cleanly.");
                 return;
             }
-
-            cleanFiltered.forEach((asset, idx) => {
-                const card = document.createElement('div');
-                card.className = 'qr-dir-card';
-                card.innerHTML = `<strong>${asset.id}</strong><div id="canvas-dir-node-${idx}"></div><small>${asset.label}</small>`;
-                grid.appendChild(card);
-                new QRCode(document.getElementById(`canvas-dir-node-${idx}`), { text: asset.codeString, width: 120, height: 120 });
-            });
-        }
-
-        function executeCreateStaffAccount() {
-            const username = document.getElementById('new-staff-username').value.trim();
-            const pin = document.getElementById('new-staff-pin').value.trim();
-            if(!username || !pin) return;
 
             fetch(`${BACKEND_URL}/api/manage/users/add`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, pin })
-            }).then(res => res.json()).then(data => {
-                if(data.success) {
-                    document.getElementById('new-staff-username').value = '';
-                    document.getElementById('new-staff-pin').value = '';
+                body: JSON.stringify({ username: usernameInput, pin: pinInput })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("✅ Registration Complete: Staff entity authorized successfully.");
+                    document.getElementById("new-staff-username").value = "";
+                    document.getElementById("new-staff-pin").value = "";
                     refreshStaffRegistryProfilesList();
-                } else { alert(`❌ Provision Error: ${data.message}`); }
+                } else {
+                    alert("❌ Registration Error: Username token already allocated.");
+                }
             });
         }
 
-        function refreshStaffRegistryProfilesList() {
-            fetch(`${BACKEND_URL}/api/manage/users/list`)
-                .then(res => res.json()).then(data => {
-                    const list = document.getElementById('staff-registry-list-render');
-                    list.innerHTML = '';
-                    data.users.forEach(u => {
-                        let delButton = u.username !== 'BenLewis1' ? `<button class="action-btn danger-btn" style="padding:4px 8px; font-size:11px; margin-left:15px; border-radius:4px;" onclick="executeDeleteStaffRow('${u.username}')">Remove Account</button>` : '<strong>(Master Account)</strong>';
-                        list.innerHTML += `<li>Operational ID: <span style="color:#311b92;">${u.username}</span> ${delButton}</li>`;
-                    });
-                });
-        }
-
         function executeDeleteStaffRow(username) {
+            if (!confirm(`Revoke all administrative platform entry access permissions for user account: ${username}?`)) return;
             fetch(`${BACKEND_URL}/api/manage/users/delete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -798,21 +940,37 @@
         }
 
         function purgeAllStaffCredentials() {
-            if(!confirm("Purge all secondary sub-staff logins?")) return;
-            fetch(`${BACKEND_URL}/api/manage/users/clear-all`, { method: 'POST' }).then(() => refreshStaffRegistryProfilesList());
+            if (!confirm("⚠️ DANGER: Completely destroy all sub-staff marshal login criteria vectors?")) return;
+            fetch(`${BACKEND_URL}/api/manage/users/clear-all`, { method: 'POST' })
+                .then(() => refreshStaffRegistryProfilesList());
         }
 
+        /**
+         * Completely strips tables clean and defaults views
+         */
         function executeMasterDatabasePurgeWipe() {
-            if(!confirm("⚠️ MAXIMUM WARNING CRITICAL RESET: Wipe completely all database data? This action cannot be reversed!")) return;
-            fetch(`${BACKEND_URL}/api/manage/purge`, { method: 'POST' }).then(() => { alert("Global storage initialization completed."); window.location.reload(); });
+            if (!confirm("🚨 TOTAL SYSTEM RESET WARNING:\nAre you absolutely certain you want to purge all game statuses, points tallies, waypoints, and security logs? This action is permanent.")) return;
+            
+            fetch(`${BACKEND_URL}/api/manage/purge`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Database factory reset executed cleanly.");
+                        window.location.reload();
+                    }
+                });
         }
 
         function executeSignOut() {
+            killCheckpointScannerStream();
             localStorage.clear();
             window.location.href = 'index.html';
         }
 
-        window.onload = function() { loadDashboardHomeMetrics(); };
+        // Boot-up Execution Hooks Bindings
+        window.onload = function() { 
+            loadDashboardHomeMetrics(); 
+        };
     </script>
 </body>
 </html>

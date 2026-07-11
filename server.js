@@ -25,9 +25,9 @@ function generateRandomWaypointCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// --- NEW DIRECT DATABASE INJECTION ROUTES (Bypasses Spreadsheet Parser Errors) ---
+// --- DIRECT DATABASE INJECTION ROUTES ---
 
-// Direct array insert for teams (Automatically attaches secure backup codes)
+// Bulk upload teams (Auto-generates 8-digit passport codes if missing)
 app.post('/api/manage/inject-people-json', async (req, res) => {
     try {
         const { payload } = req.body; 
@@ -35,10 +35,8 @@ app.post('/api/manage/inject-people-json', async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid JSON array payload layout." });
         }
         
-        // Wipe old entries clean
         await supabase.from('teams').delete().neq('group_number', 'RESET_FORCE');
         
-        // Auto-enrich rows with unique, random 8-digit backup codes
         const enrichedPayload = payload.map(team => ({
             ...team,
             backup_code: team.backup_code || generateRandomBackupCode(),
@@ -49,7 +47,6 @@ app.post('/api/manage/inject-people-json', async (req, res) => {
             groups_caught: team.groups_caught || 0
         }));
 
-        // Bulk insert directly into the Supabase SQL database engine
         const { error } = await supabase.from('teams').insert(enrichedPayload);
         if (error) throw error;
         
@@ -59,7 +56,7 @@ app.post('/api/manage/inject-people-json', async (req, res) => {
     }
 });
 
-// Direct array insert for waypoints/events (Handles AUTO_GEN keywords)
+// Bulk upload waypoints (Forces generation of secure 6-digit codes)
 app.post('/api/manage/inject-event-json', async (req, res) => {
     try {
         const { payload } = req.body;
@@ -69,11 +66,16 @@ app.post('/api/manage/inject-event-json', async (req, res) => {
 
         await supabase.from('events').delete().neq('code', 'RESET_FORCE');
         
-        // Auto-transform AUTO_GEN codes into unguessable 6-digit keys
-        const enrichedPayload = payload.map(event => ({
-            ...event,
-            code: (event.code === 'AUTO_GEN' || !event.code) ? generateRandomWaypointCode() : String(event.code).trim()
-        }));
+        const enrichedPayload = payload.map(event => {
+            const currentCode = String(event.code || '').trim();
+            return {
+                ...event,
+                // Replace W01, W02, AUTO_GEN or empty values with secure random 6 digits
+                code: (currentCode === 'AUTO_GEN' || currentCode.startsWith('W0') || !currentCode) 
+                    ? generateRandomWaypointCode() 
+                    : currentCode
+            };
+        });
 
         const { error } = await supabase.from('events').insert(enrichedPayload);
         if (error) throw error;
@@ -83,7 +85,6 @@ app.post('/api/manage/inject-event-json', async (req, res) => {
         return res.status(500).json({ success: false, message: err.message });
     }
 });
-
 
 // --- MANAGEMENT & STAFF AUTHENTICATION ENDPOINTS ---
 app.post('/api/manage/login', async (req, res) => {
@@ -127,14 +128,11 @@ app.post('/api/manage/users/clear-all', async (req, res) => {
     return res.json({ success: true });
 });
 
-// --- CLIENT AUTHENTICATION & PASSPORT CROSS-CHECK ENGINE ---
+// --- CLIENT SCANNERS & PASSPORT PROCESSOR ENGINE ---
 app.post('/api/client/scan-waypoint', async (req, res) => {
     let { teamId, code, lat, lon } = req.body;
     try {
-        let cleanCode = String(code).trim().toUpperCase();
-        if (cleanCode.startsWith("WP-")) {
-            cleanCode = cleanCode.replace("WP-", "");
-        }
+        let cleanCode = String(code).trim();
 
         const { data: ev } = await supabase.from('events').select('*').eq('code', cleanCode).eq('type', 'Waypoint').maybeSingle();
         if (!ev) return res.status(404).json({ success: false, message: `Waypoint ${cleanCode} does not exist.` });
@@ -163,7 +161,7 @@ app.post('/api/client/scan-waypoint', async (req, res) => {
             points_gained: team.points_gained + valueReward
         }).eq('group_number', teamId);
 
-        return res.json({ success: true, code: cleanCode, time: new Date().toLocaleTimeString() });
+        return res.json({ success: true, code: cleanCode });
     } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
 });
 
@@ -172,13 +170,12 @@ app.post('/api/client/process-passport', async (req, res) => {
     try {
         const cleanInputToken = String(scannedPassportString).trim();
         
-        // Find the target team based on their unique 8-digit randomized backup code
         const { data: targetTeam } = await supabase.from('teams').select('*').eq('backup_code', cleanInputToken).maybeSingle();
-        if (!targetTeam) return res.status(404).json({ success: false, message: "Security Token mismatch. No matching active group profile." });
+        if (!targetTeam) return res.status(404).json({ success: false, message: "Security Token mismatch. No matching group profile." });
 
         const targetTeamNum = targetTeam.group_number;
 
-        // 1. Handle Checkpoint Check-in Layout Console
+        // Checkpoint Mode Check-in
         if (currentCheckpointContext) {
             const { data: duplicatedCheckin } = await supabase.from('logs').select('*')
                 .eq('team_id', targetTeamNum).eq('target_id', currentCheckpointContext).eq('action_type', 'CHECKIN').maybeSingle();
@@ -193,7 +190,7 @@ app.post('/api/client/process-passport', async (req, res) => {
             return res.json({ success: true, type: 'CHECKIN', message: `Group ${targetTeamNum} Signed In Successfully` });
         }
 
-        // 2. Handle Catcher Intercept Logic
+        // Catcher Mode Catching
         const { data: operatorTeam } = await supabase.from('teams').select('*').eq('group_number', operatorId).maybeSingle();
 
         if (operatorTeam && operatorTeam.category === 'Catcher') {
@@ -211,10 +208,9 @@ app.post('/api/client/process-passport', async (req, res) => {
                     details: `Intercepted by Catcher ${operatorId} during Active Grace period. Blocked points loss.`,
                     latitude: lat || null, longitude: lon || null
                 }]);
-                return res.json({ success: true, type: 'GRACE', message: `Target in Grace Period! Encounter logged for safety.` });
+                return res.json({ success: true, type: 'GRACE', message: `Target in Grace Period!` });
             }
 
-            // Deducts points cleanly into negative ranges if required
             await supabase.from('teams').update({
                 points: targetTeam.points - 10, 
                 points_lost: targetTeam.points_lost + 10,
@@ -282,4 +278,4 @@ app.post('/api/manage/purge', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Chameleon Backend Pipeline running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Backend Matrix Active on port ${PORT}`));
