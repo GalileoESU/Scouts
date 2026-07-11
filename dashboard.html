@@ -8,223 +8,269 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 0;
             background-color: #f4f7f6;
             color: #333;
-            padding-bottom: 80px; /* buffer for bottom nav bar */
+            padding-bottom: 90px;
+            overflow-x: hidden;
         }
 
-        /* Fixed Brand Header */
+        /* Fixed Brand Header Component */
         .app-header {
             background-color: #4a148c;
-            padding: 15px 0;
+            padding: 16px 0;
             display: flex;
             align-items: center;
             justify-content: center;
             position: sticky;
             top: 0;
             z-index: 1000;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         .header-logo {
-            max-height: 40px;
+            max-height: 42px;
             width: auto;
+            filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.2));
         }
 
-        /* View Panels Base Grid */
+        /* View Panels Core Routing Grid */
         .content-panel {
             display: none;
-            max-width: 450px;
-            margin: 20px auto;
-            width: 90%;
+            max-width: 480px;
+            margin: 24px auto;
+            width: 92%;
             box-sizing: border-box;
-            animation: fadeIn 0.3s ease-in-out;
+            animation: panelSlideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+        @keyframes panelSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .content-panel.active {
             display: block;
         }
 
-        /* Sub-Header text elements */
+        /* Meta Description Strings */
         .meta-title {
             text-align: center;
-            font-size: 22px;
-            font-weight: bold;
+            font-size: 24px;
+            font-weight: 800;
             color: #4a148c;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
         }
         .meta-subtitle {
             text-align: center;
             font-size: 14px;
             color: #666;
-            margin-bottom: 25px;
+            margin-bottom: 24px;
+            font-weight: 500;
         }
 
-        /* Card elements styling */
+        /* Material Layout Cards */
         .ui-card {
             background: white;
-            border-radius: 16px;
-            padding: 25px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.06);
             text-align: center;
-            margin-bottom: 20px;
-            border: 1px solid #e0e0e0;
+            margin-bottom: 24px;
+            border: 1px solid #e2e8f0;
+            box-sizing: border-box;
+        }
+        .ui-card h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #1a202c;
+            font-size: 18px;
+            font-weight: 700;
         }
 
-        /* QR Display styling */
+        /* QR Barcode Shell */
         .qr-display-wrapper {
             background: white;
-            padding: 15px;
-            border-radius: 12px;
+            padding: 20px;
+            border-radius: 16px;
             display: inline-block;
-            margin: 15px auto;
-            border: 2px solid #4a148c;
+            margin: 16px auto;
+            border: 3px solid #4a148c;
+            box-shadow: 0 4px 10px rgba(74,20,140,0.1);
         }
-        .backup-code-box {
-            font-size: 20px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            color: #4a148c;
-            background: #f3e5f5;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 15px;
-            border: 1px dashed #4a148c;
+        .qr-display-wrapper div img {
+            display: block;
         }
 
-        /* Standardized Inputs */
+        /* Cryptographic Token Output Presentation */
+        .backup-code-box {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: 4px;
+            color: #4a148c;
+            background: #f3e5f5;
+            padding: 14px;
+            border-radius: 12px;
+            margin-top: 16px;
+            border: 2px dashed #4a148c;
+            text-shadow: 1px 1px 0px white;
+        }
+
+        /* Standard Controls */
         .text-input {
             width: 100%;
-            padding: 14px;
-            border: 2px solid #ccc;
-            border-radius: 10px;
+            padding: 16px;
+            border: 2px solid #cbd5e1;
+            border-radius: 12px;
             font-size: 16px;
+            font-weight: 600;
             box-sizing: border-box;
             outline: none;
             text-align: center;
-            margin-top: 10px;
+            margin-top: 12px;
+            transition: border-color 0.2s ease;
+            background-color: #f8fafc;
         }
         .text-input:focus {
             border-color: #4a148c;
+            background-color: #fff;
         }
 
         .action-btn {
             background-color: #4a148c;
             color: white;
             border: none;
-            padding: 14px 28px;
+            padding: 16px 32px;
             font-size: 16px;
-            font-weight: bold;
-            border-radius: 25px;
+            font-weight: 700;
+            border-radius: 30px;
             cursor: pointer;
             width: 100%;
-            margin-top: 15px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            margin-top: 16px;
+            box-shadow: 0 4px 12px rgba(74,20,140,0.3);
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        .action-btn:active {
+            transform: scale(0.98);
         }
 
-        /* Notification Toast styles */
+        /* Alert Toast Elements */
         .scan-toast {
             background-color: #2e7d32;
             color: white;
-            padding: 15px;
-            border-radius: 10px;
-            font-weight: bold;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 700;
             margin-bottom: 20px;
-            text-align: left;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
             display: none;
+            font-size: 15px;
         }
 
-        /* Scrolling frame list for scoring & logs */
+        /* Metric Trackers (Explicitly styled for handling negative ranges) */
         .score-headline {
-            font-size: 48px;
-            font-weight: bold;
+            font-size: 56px;
+            font-weight: 900;
             color: #2e7d32;
-            margin: 10px 0;
+            margin: 12px 0;
+            transition: color 0.3s ease;
         }
+        .score-headline.negative-score {
+            color: #d32f2f !important;
+        }
+
+        /* Live Activity Log Stream Panels */
         .log-scroller {
-            max-height: 250px;
+            max-height: 280px;
             overflow-y: auto;
             text-align: left;
-            margin-top: 15px;
-            border-top: 1px solid #eee;
-            padding-top: 10px;
+            margin-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
         }
         .log-item {
-            padding: 10px;
-            border-bottom: 1px solid #f4f4f4;
+            padding: 12px;
+            border-bottom: 1px solid #f1f5f9;
             font-size: 14px;
+            line-height: 1.4;
+        }
+        .log-item:last-child {
+            border-bottom: none;
         }
         .log-time {
-            color: #888;
-            font-size: 12px;
-            margin-bottom: 3px;
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 4px;
         }
 
-        /* Grace Warning Banner */
+        /* Timed Defensive Banners */
         .grace-banner {
-            background-color: #ef6c00;
+            background: linear-gradient(135deg, #ef6c00 0%, #e65100 100%);
             color: white;
-            padding: 10px;
-            border-radius: 8px;
-            font-weight: bold;
-            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
             display: none;
+            box-shadow: 0 4px 10px rgba(239,108,0,0.25);
+            font-size: 14px;
         }
 
-        /* 5-Button Bottom Navigation Bar System */
+        /* Fixed Navigation System */
         .bottom-nav {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            background-color: white;
+            background-color: rgba(255,255,255,0.95);
+            backdrop-filter: blur(8px);
             display: flex;
             justify-content: space-around;
             align-items: center;
-            border-top: 1px solid #e0e0e0;
-            box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+            border-top: 1px solid #e2e8f0;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
             z-index: 2000;
         }
         .nav-tab {
             flex: 1;
-            padding: 12px 0;
+            padding: 14px 0;
             text-align: center;
-            font-size: 11px;
-            font-weight: bold;
-            color: #777;
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
             cursor: pointer;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 4px;
+            transition: all 0.2s ease;
         }
         .nav-tab.active {
             color: #4a148c;
             background-color: #f3e5f5;
         }
         .nav-icon {
-            font-size: 20px;
+            font-size: 22px;
         }
         .tab-red {
-            color: #c62828 !important;
+            color: #ef4444 !important;
         }
         .tab-red.active {
-            background-color: #ffebee;
+            background-color: #fee2e2;
         }
 
         #camera-housing-box {
             width: 100%;
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
-            background: black;
+            background: #000;
             border: 2px solid #4a148c;
-            margin-top: 15px;
+            margin-top: 16px;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
         }
     </style>
 </head>
@@ -235,17 +281,17 @@
     </div>
 
     <div id="panel-qr" class="content-panel active">
-        <div class="meta-title" id="qr-team-title">Loading Team Name...</div>
-        <div class="meta-subtitle" id="qr-team-subtitle">Team #---</div>
+        <div class="meta-title" id="qr-team-title">Loading Identity Workspace...</div>
+        <div class="meta-subtitle" id="qr-team-subtitle">Connecting to fleet server...</div>
         
         <div class="grace-banner" id="panel-grace-timer">🛡️ Active Grace Period Remaining: 15:00</div>
 
         <div class="ui-card">
             <h3>Passport Check-In QR</h3>
-            <p style="font-size: 13px; color: #666; margin: 0 0 10px 0;">Present this barcode matrix when intercepted by Catchers or when entering active Checkpoints.</p>
+            <p style="font-size: 13px; color: #64748b; margin: 0 0 12px 0; line-height: 1.4;">Present this encrypted layout barcode node when challenged by active Catcher units or registering inside Checkpoint areas.</p>
             <div class="qr-display-wrapper"><div id="team-passport-qrcode"></div></div>
-            <div style="font-size: 13px; font-weight: bold; color: #555; margin-top: 10px;">Manual Backdoor Backup Identifier</div>
-            <div class="backup-code-box" id="backup-digits-label">Loading...</div>
+            <div style="font-size: 13px; font-weight: 700; color: #475569; margin-top: 12px;">Anti-Cheat Backup Verification Code</div>
+            <div class="backup-code-box" id="backup-digits-label">--------</div>
         </div>
     </div>
 
@@ -256,15 +302,15 @@
         <div class="meta-subtitle">Secure Capture Verification Grid</div>
 
         <div class="ui-card">
-            <p style="font-size:14px; color:#555; margin:0;" id="scanner-instruction-label">Scan waypoint flag nodes distributed inside the designated matrix parameters.</p>
-            <div id="camera-housing-box"><div id="dashboard-camera-element" style="width:100%;"></div></div>
+            <p style="font-size: 14px; color: #475569; margin: 0; line-height: 1.4;" id="scanner-instruction-label">Align tracking code nodes inside the central field of view to sync data parameters dynamically.</p>
+            <div id="camera-housing-box"><div id="dashboard-camera-element" style="width: 100%;"></div></div>
             
-            <button class="action-btn" id="camera-toggle-switch-btn" style="background-color:#0288d1; margin-top:10px;" onclick="toggleDashboardCameraDirection()">🔄 Switch Camera View</button>
+            <button class="action-btn" id="camera-toggle-switch-btn" style="background-color: #0288d1; margin-top: 12px; box-shadow: 0 4px 10px rgba(2,136,209,0.25);" onclick="toggleDashboardCameraDirection()">🔄 Switch Optical Camera View</button>
             
-            <div style="margin: 25px 0 10px 0; font-weight: bold; color: #777; font-size: 13px;">--- OR MANUAL CODE INPUT OVERRIDE ---</div>
-            <p style="font-size:12px; color:#666; margin:0;" id="manual-instruction-sublabel">If camera scanning encounters error vectors, input the code backup key below.</p>
-            <input type="text" class="text-input" id="manual-code-override-field" placeholder="e.g. WP-00001 or Team Number">
-            <button class="action-btn" onclick="submitManualCodeOverride()">Submit Code Override</button>
+            <div style="margin: 28px 0 12px 0; font-weight: 800; color: #94a3b8; font-size: 13px; letter-spacing: 1px;">--- SECURE MANUAL OVERRIDE PIN ---</div>
+            <p style="font-size: 12px; color: #64748b; margin: 0 4px;" id="manual-instruction-sublabel">If validation scanning encounters camera device failures, type the unguessable manual code value below.</p>
+            <input type="text" class="text-input" id="manual-code-override-field" placeholder="Enter Secure Code Key">
+            <button class="action-btn" onclick="submitManualCodeOverride()">Submit Token Verification</button>
         </div>
     </div>
 
@@ -273,28 +319,29 @@
         <div class="meta-subtitle">Real-time Field Operations Logging Ledger</div>
 
         <div class="ui-card">
-            <h3 style="margin:0; color:#555;">Current Score</h3>
+            <h3 style="margin: 0; color: #64748b; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px;">Current Matrix Score</h3>
             <div class="score-headline" id="display-score-total">0</div>
-            <p style="font-size:13px; color:#666; margin:0;">Points adjusted dynamically via tracking server rule sets.</p>
+            <p style="font-size: 12px; color: #94a3b8; margin: 0;">Calculated instantly based on checkpoint actions and intercept deductions.</p>
         </div>
 
         <div class="ui-card">
-            <h3 style="text-align: left; margin: 0 0 10px 0; color: #4a148c;">Activity Log</h3>
+            <h3 style="text-align: left; margin: 0 0 12px 0; color: #4a148c; font-size: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 6px;">Activity Telemetry</h3>
             <div class="log-scroller" id="scroller-log-items-target">
-                <div class="log-item" style="text-align:center; color:#999;">No logged action parameters found.</div>
+                <div class="log-item" style="text-align: center; color: #94a3b8; padding: 20px 0;">No active event metrics logged yet.</div>
             </div>
         </div>
     </div>
 
     <div id="panel-contact" class="content-panel">
         <div class="meta-title">Emergency Contacts</div>
-        <div class="meta-subtitle">Operations Support Hotline Matrix</div>
+        <div class="meta-subtitle">Operations Support Support Matrix</div>
 
         <div class="ui-card">
-            <h2 style="margin: 10px 0; color: #b71c1c; font-size: 32px;">(+44) 07572918292</h2>
-            <p style="color: #b71c1c; font-weight: bold; font-size: 15px; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">
-                ⚠️ This Phone Number Is Only To Be Used In Emergencies.
-            </p>
+            <p style="font-size: 14px; color: #475569; margin: 0 0 16px 0; line-height: 1.5;">In the case of a medical crisis, extreme navigation orientation loss, or safety vectors, dial HQ directly:</p>
+            <h2 style="margin: 12px 0; color: #b71c1c; font-size: 34px; font-weight: 900; letter-spacing: -0.5px;">07572 918292</h2>
+            <div style="color: #b71c1c; background-color: #ffebee; border: 1px solid #ffcdd2; border-radius: 12px; padding: 14px; font-weight: 700; font-size: 13px; margin-top: 20px; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.4;">
+                ⚠️ This communication bridge is strictly recorded for safety operations. Do not disrupt lines for casual scoring arguments.
+            </div>
         </div>
     </div>
 
@@ -341,33 +388,47 @@
                     currentProfileCache = data.team;
                     
                     document.getElementById('qr-team-title').innerText = currentProfileCache.scout_group;
-                    document.getElementById('qr-team-subtitle').innerText = `${currentProfileCache.category} | Team #${currentProfileCache.group_number}`;
-                    document.getElementById('display-score-total').innerText = currentProfileCache.points;
+                    document.getElementById('qr-team-subtitle').innerText = `${currentProfileCache.category} Group | Team Module #${currentProfileCache.group_number}`;
                     
+                    // Display and manage live scoring text color shift if metrics go negative
+                    const scoreTarget = document.getElementById('display-score-total');
+                    const parsedScore = parseInt(currentProfileCache.points) || 0;
+                    scoreTarget.innerText = parsedScore;
+                    if(parsedScore < 0) {
+                        scoreTarget.classList.add('negative-score');
+                    } else {
+                        scoreTarget.classList.remove('negative-score');
+                    }
+                    
+                    // Security Fix: Map anti-cheat tokens dynamically directly from database structures
                     if(currentProfileCache.category === 'Catcher') {
                         document.getElementById('scanner-view-title').innerText = "Catcher Intercept Hub";
                         document.getElementById('nav-tab-scan-button-text').innerHTML = '<span class="nav-icon">📷</span>QR Scanner';
-                        document.getElementById('scanner-instruction-label').innerText = "Scan a Scout/ESU team's passport code layout to record an intercept catch.";
-                        document.getElementById('manual-instruction-sublabel').innerText = "If camera capture fails, type the raw numeric Group Number of the team captured below.";
-                        document.getElementById('manual-code-override-field').placeholder = "e.g. 5, 12, 24";
-                        document.getElementById('backup-digits-label').innerText = `CATCHER_ID_${currentProfileCache.group_number}`;
+                        document.getElementById('scanner-instruction-label').innerText = "Scan an intercepted group's passport code configuration or type their unique 8-digit random verification code.";
+                        document.getElementById('manual-instruction-sublabel').innerText = "If camera capture fails, input the unguessable random 8-digit backup token:";
+                        document.getElementById('manual-code-override-field').placeholder = "e.g. 59201482";
+                        document.getElementById('backup-digits-label').innerText = currentProfileCache.backup_code || "--------";
+                        
+                        // Catcher passport generation embeds their unguessable random token layout
+                        document.getElementById('team-passport-qrcode').innerHTML = '';
+                        new QRCode(document.getElementById('team-passport-qrcode'), {
+                            text: String(currentProfileCache.backup_code).trim(),
+                            width: 180, height: 180
+                        });
                     } else {
-                        const parsedValue = parseInt(currentProfileCache.group_number);
-                        const fallbackString = isNaN(parsedValue) ? currentProfileCache.group_number : `TEAM-${String(parsedValue).padStart(3, '0')}`;
-                        document.getElementById('backup-digits-label').innerText = fallbackString;
+                        document.getElementById('backup-digits-label').innerText = currentProfileCache.backup_code || "--------";
+                        
+                        // Player passport generation embeds their unguessable random token layout
+                        document.getElementById('team-passport-qrcode').innerHTML = '';
+                        new QRCode(document.getElementById('team-passport-qrcode'), {
+                            text: String(currentProfileCache.backup_code).trim(),
+                            width: 180, height: 180
+                        });
                     }
-
-                    // Generate Passport QR code
-                    document.getElementById('team-passport-qrcode').innerHTML = '';
-                    new QRCode(document.getElementById('team-passport-qrcode'), {
-                        text: `CHAMELEON_TEAM_${currentProfileCache.group_number}`,
-                        width: 180,
-                        height: 180
-                    });
 
                     handleGracePeriodClock(currentProfileCache.last_caught_at);
                 }
-            });
+            }).catch(e => console.error("Profile sync dropped error:", e));
         }
 
         function handleGracePeriodClock(lastCaughtAtTimestamp) {
@@ -401,7 +462,7 @@
         function launchScannerHardwareEngine() {
             if(!activeDashboardScanner) return;
             activeDashboardScanner.start(
-                { facingMode: dashboardCameraFacingMode }, { fps: 10, qrbox: 220 },
+                { facingMode: dashboardCameraFacingMode }, { fps: 12, qrbox: 240 },
                 (decodedText) => {
                     executeScannedPayloadTransmission(decodedText);
                 }, () => {}
@@ -413,7 +474,7 @@
             dashboardCameraFacingMode = (dashboardCameraFacingMode === "environment") ? "user" : "environment";
             activeDashboardScanner.stop().then(() => {
                 launchScannerHardwareEngine();
-            });
+            }).catch(() => launchScannerHardwareEngine());
         }
 
         function terminateDashboardScannerStream() {
@@ -428,7 +489,7 @@
                 navigator.geolocation.getCurrentPosition(
                     (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
                     () => resolve({ lat: null, lon: null }),
-                    { timeout: 4000 }
+                    { timeout: 4000, enableHighAccuracy: true }
                 );
             });
         }
@@ -436,17 +497,13 @@
         async function executeScannedPayloadTransmission(payloadString) {
             terminateDashboardScannerStream();
             const coords = await captureGPSCoordinates();
+            const cleanToken = String(payloadString).trim();
 
-            // Intercept Catch Strategy Routine
-            if(payloadString.toUpperCase().includes("CHAMELEON_TEAM_") || currentProfileCache.category === 'Catcher') {
+            // Routing validation algorithms based on lengths and active category roles
+            if(cleanToken.length === 8 || currentProfileCache.category === 'Catcher') {
                 if(currentProfileCache.category !== 'Catcher') {
-                    triggerToastAlert("❌ Error: Only adult Catchers can register team intercepts.", false);
+                    triggerToastAlert("❌ Error: Only adult Catcher teams can intercept groups.", false);
                     return;
-                }
-                
-                let processedPassportToken = payloadString;
-                if(!processedPassportToken.toUpperCase().includes("CHAMELEON_TEAM_")) {
-                    processedPassportToken = `CHAMELEON_TEAM_${payloadString.trim()}`;
                 }
                 
                 fetch(`${BACKEND_URL}/api/client/process-passport`, {
@@ -454,7 +511,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         operatorId: teamId,
-                        scannedPassportString: processedPassportToken,
+                        scannedPassportString: cleanToken,
                         lat: coords.lat, lon: coords.lon
                     })
                 })
@@ -462,30 +519,30 @@
                 .then(data => {
                     triggerToastAlert(data.success ? `✅ ${data.message}` : `❌ Error: ${data.message}`, data.success);
                     syncProfileParameters();
-                });
+                }).catch(() => { triggerToastAlert("❌ Network transmission failed.", false); });
                 return;
             }
 
-            // Waypoint Submission Strategy Routine
+            // Waypoint Processing Route using secure unguessable 6-digit key values
             fetch(`${BACKEND_URL}/api/client/scan-waypoint`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     teamId: teamId,
-                    code: payloadString,
+                    code: cleanToken,
                     lat: coords.lat, lon: coords.lon
                 })
             })
             .then(res => res.json())
             .then(data => {
                 if(data.success) {
-                    triggerToastAlert(`✅ Waypoint (${data.code}) successfully scanned!`, true);
+                    triggerToastAlert(`✅ Waypoint claimed successfully!`, true);
                 } else {
-                    triggerToastAlert(`❌ Error: ${data.message}`, false);
+                    triggerToastAlert(`❌ Verification Error: ${data.message}`, false);
                 }
                 syncProfileParameters();
             }).catch(() => {
-                triggerToastAlert("❌ Pipeline communication interface failed.", false);
+                triggerToastAlert("❌ Engine pipeline connection failure.", false);
             });
         }
 
@@ -501,7 +558,7 @@
             toast.innerText = messageText;
             toast.style.backgroundColor = isSuccess ? '#2e7d32' : '#c62828';
             toast.style.display = 'block';
-            window.scrollTo(0,0);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             
             setTimeout(() => { 
                 toast.style.display = 'none'; 
@@ -517,24 +574,26 @@
                     scroller.innerHTML = '';
                     
                     if(!data.logs || data.logs.length === 0) {
-                        scroller.innerHTML = '<div class="log-item" style="text-align:center; color:#999;">No logged action parameters found.</div>';
+                        scroller.innerHTML = '<div class="log-item" style="text-align:center; color:#94a3b8; padding: 20px 0;">No logs matched to this signature record profile.</div>';
                         return;
                     }
 
                     data.logs.forEach(l => {
-                        const localTime = new Date(l.created_at).toLocaleTimeString();
+                        const dateObj = new Date(l.created_at);
+                        const localTime = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
                         let ptsLabel = l.points_changed !== 0 ? ` (${l.points_changed > 0 ? '+' : ''}${l.points_changed} Pts)` : '';
+                        
                         scroller.innerHTML += `
                             <div class="log-item">
-                                <div class="log-time">${new Date(l.created_at).toDateString()} - ${localTime}</div>
-                                <strong>${l.action_type}</strong>: ${l.details}${ptsLabel}
+                                <div class="log-time">${dateObj.toDateString()} at ${localTime}</div>
+                                <strong>${l.action_type}</strong>: ${l.details}<span style="font-weight:700; color:${l.points_changed < 0 ? '#d32f2f' : '#2e7d32'}">${ptsLabel}</span>
                             </div>`;
                     });
-                });
+                }).catch(e => console.error("Telemetry sync error:", e));
         }
 
         function triggerSessionSignOut() {
-            if(!confirm("Confirm user logout request?")) return;
+            if(!confirm("Are you sure you want to sign out of this operational interface tracking matrix?")) return;
             terminateDashboardScannerStream();
             localStorage.clear();
             window.location.href = 'index.html';

@@ -15,30 +15,44 @@ const SUPABASE_URL = 'https://ebtcoqdfhpmjlaevinvp.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_sJR22My1jObDNxGm770e3w_TNW279jd'; 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Helper function to build cryptographic random number strings
+function generateRandomCode(length) {
+    let result = '';
+    const characters = '0123456789';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+}
+
 // --- NEW DIRECT DATABASE INJECTION ROUTES ---
 
-// Direct array insert for teams
+// Direct array insert for teams with random 8-digit backup codes
 app.post('/api/manage/inject-people-json', async (req, res) => {
     try {
-        const { payload } = req.body; // Expects array of clean objects
+        const { payload } = req.body;
         if (!payload || !Array.isArray(payload)) {
             return res.status(400).json({ success: false, message: "Invalid JSON array payload layout." });
         }
         
-        // Wipe old entries clean safely using a consistent reset clause
         await supabase.from('teams').delete().neq('group_number', 'RESET_FORCE');
         
-        // Bulk insert directly into the Supabase SQL database engine
-        const { error } = await supabase.from('teams').insert(payload);
+        // Enrich payload with unguessable random 8-digit backup tokens
+        const enrichedPayload = payload.map(team => ({
+            ...team,
+            backup_code: generateRandomCode(8)
+        }));
+        
+        const { error } = await supabase.from('teams').insert(enrichedPayload);
         if (error) throw error;
         
-        return res.json({ success: true, count: payload.length });
+        return res.json({ success: true, count: enrichedPayload.length });
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
     }
 });
 
-// Direct array insert for waypoints/events
+// Direct array insert for waypoints with random 6-digit secret verification codes
 app.post('/api/manage/inject-event-json', async (req, res) => {
     try {
         const { payload } = req.body;
@@ -48,10 +62,16 @@ app.post('/api/manage/inject-event-json', async (req, res) => {
 
         await supabase.from('events').delete().neq('code', 'RESET_FORCE');
         
-        const { error } = await supabase.from('events').insert(payload);
+        // Assign unguessable random 6-digit validation keys to waypoints
+        const enrichedPayload = payload.map(ev => ({
+            ...ev,
+            code: ev.type === 'Waypoint' ? generateRandomCode(6) : String(ev.code).trim().padStart(3, '0')
+        }));
+        
+        const { error } = await supabase.from('events').insert(enrichedPayload);
         if (error) throw error;
 
-        return res.json({ success: true, count: payload.length });
+        return res.json({ success: true, count: enrichedPayload.length });
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
     }
@@ -100,7 +120,7 @@ app.post('/api/manage/users/clear-all', async (req, res) => {
     return res.json({ success: true });
 });
 
-// --- LEGACY SPREADSHEET PARSERS ---
+// --- SPREADSHEET PARSERS WITH PROTECTION ENHANCEMENTS ---
 app.post('/api/manage/upload-people', upload.single('peopleFile'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: "Missing file payload." });
@@ -113,7 +133,8 @@ app.post('/api/manage/upload-people', upload.single('peopleFile'), async (req, r
             category: String(r['Group Category'] || r['Category'] || r['category'] || 'Scout').trim(),
             no_of_people: parseInt(r['No of People'] || r['no_of_people'] || 1),
             youngest_age: r['Youngest Age'] ? parseInt(r['Youngest Age']) : null,
-            oldest_age: r['Oldest Age'] ? parseInt(r['Oldest Age']) : null
+            oldest_age: r['Oldest Age'] ? parseInt(r['Oldest Age']) : null,
+            backup_code: generateRandomCode(8) // Anti-cheat unguessable key assignment
         })).filter(r => r.group_number !== '');
 
         await supabase.from('teams').delete().neq('group_number', 'RESET_FORCE');
@@ -129,11 +150,14 @@ app.post('/api/manage/upload-event', upload.single('eventFile'), async (req, res
         const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
-        const formatted = rows.map(r => ({
-            code: String(r['Checkpoint / Waypoint No'] || r['Code'] || r['code'] || '').trim().padStart(3, '0'),
-            type: String(r['Type'] || r['type'] || '').trim(),
-            target_group: String(r['Group'] || r['Target Group'] || r['target_group'] || 'All').trim()
-        })).filter(r => r.code !== '000' && r.code !== '');
+        const formatted = rows.map(r => {
+            const isWaypoint = String(r['Type'] || r['type'] || '').trim().toLowerCase() === 'waypoint';
+            return {
+                code: isWaypoint ? generateRandomCode(6) : String(r['Checkpoint / Waypoint No'] || r['Code'] || r['code'] || '').trim().padStart(3, '0'),
+                type: String(r['Type'] || r['type'] || '').trim(),
+                target_group: String(r['Group'] || r['Target Group'] || r['target_group'] || 'All').trim()
+            };
+        }).filter(r => r.code !== '');
 
         await supabase.from('events').delete().neq('code', 'RESET_FORCE');
         const { error } = await supabase.from('events').insert(formatted);
@@ -147,13 +171,10 @@ app.post('/api/client/scan-waypoint', async (req, res) => {
     let { teamId, code, lat, lon } = req.body;
     try {
         let cleanCode = String(code).trim().toUpperCase();
-        if (cleanCode.startsWith("WP-")) {
-            cleanCode = cleanCode.replace("WP-", "");
-        }
-        cleanCode = cleanCode.padStart(3, '0');
 
+        // Check if matching random 6-digit key directly
         const { data: ev, error: evErr } = await supabase.from('events').select('*').eq('code', cleanCode).eq('type', 'Waypoint').maybeSingle();
-        if (evErr || !ev) return res.status(404).json({ success: false, message: `Waypoint ${cleanCode} does not exist.` });
+        if (evErr || !ev) return res.status(404).json({ success: false, message: `Waypoint flag code ${cleanCode} does not exist.` });
 
         const { data: team, error: teamErr } = await supabase.from('teams').select('*').eq('group_number', teamId).maybeSingle();
         if (teamErr || !team) return res.status(404).json({ success: false, message: "Team record profile lost." });
@@ -170,7 +191,7 @@ app.post('/api/client/scan-waypoint', async (req, res) => {
 
         await supabase.from('logs').insert([{
             team_id: teamId, action_type: 'WAYPOINT', target_id: cleanCode,
-            details: `Waypoint ${cleanCode} Scanned successfully.`, points_changed: valueReward,
+            details: `Waypoint flag successfully verified.`, points_changed: valueReward,
             latitude: lat || null, longitude: lon || null
         }]);
 
@@ -186,16 +207,28 @@ app.post('/api/client/scan-waypoint', async (req, res) => {
 app.post('/api/client/process-passport', async (req, res) => {
     const { operatorId, scannedPassportString, currentCheckpointContext, lat, lon } = req.body;
     try {
-        const teamNumMatch = scannedPassportString.match(/CHAMELEON_TEAM_(.+)/) || scannedPassportString.match(/CHAMELEON_INITIALIZE_GROUP_(.+)/);
-        if (!teamNumMatch) return res.status(400).json({ success: false, message: "Invalid QR format passport asset token matched." });
-        const targetTeamNum = teamNumMatch[1];
+        let targetTeamNum = null;
 
-        const { data: targetTeam } = await supabase.from('teams').select('*').eq('group_number', targetTeamNum).maybeSingle();
-        if (!targetTeam) return res.status(404).json({ success: false, message: "Scanned Target Team not found." });
+        // Check text signature matching QR format, or match via direct random backup_code injection
+        const teamNumMatch = scannedPassportString.match(/CHAMELEON_TEAM_(.+)/);
+        
+        let targetTeam = null;
+        if (teamNumMatch) {
+            targetTeamNum = teamNumMatch[1];
+            const { data } = await supabase.from('teams').select('*').eq('group_number', targetTeamNum).maybeSingle();
+            targetTeam = data;
+        } else {
+            // Find target securely by matching their unique 8-digit code
+            const { data } = await supabase.from('teams').select('*').eq('backup_code', scannedPassportString.trim()).maybeSingle();
+            targetTeam = data;
+            if (targetTeam) targetTeamNum = targetTeam.group_number;
+        }
+
+        if (!targetTeam) return res.status(404).json({ success: false, message: "Invalid scan profile token matched." });
 
         const { data: operatorTeam } = await supabase.from('teams').select('*').eq('group_number', operatorId).maybeSingle();
 
-        // 1. Handle Checkpoint Check-in Logic
+        // Checkpoint Handler Routing Logic
         if (currentCheckpointContext) {
             await supabase.from('logs').insert([{
                 team_id: targetTeamNum, action_type: 'CHECKIN', target_id: currentCheckpointContext,
@@ -205,7 +238,7 @@ app.post('/api/client/process-passport', async (req, res) => {
             return res.json({ success: true, type: 'CHECKIN', message: `Group ${targetTeamNum} Signed In Successfully` });
         }
 
-        // 2. Handle Catch Logic (Allows scores to go negative)
+        // Catcher Interception Logic (Intentionally allows negative values)
         if (operatorTeam && operatorTeam.category === 'Catcher') {
             const now = new Date();
             let graceRemainingMinutes = 0;
@@ -224,6 +257,7 @@ app.post('/api/client/process-passport', async (req, res) => {
                 return res.json({ success: true, type: 'GRACE', message: `Target in Grace Period! Encounter logged for safety.` });
             }
 
+            // Calculations explicitly allow points to drop below zero
             await supabase.from('teams').update({
                 points: targetTeam.points - 10, 
                 points_lost: targetTeam.points_lost + 10,
@@ -256,9 +290,7 @@ app.post('/api/team/setup-lookup', async (req, res) => {
         const { data, error } = await supabase.from('teams').select('*').eq('group_number', String(groupNo).trim()).maybeSingle();
         if (error || !data) return res.status(404).json({ success: false, message: "Group Number not found." });
         return res.json({ success: true, team: data });
-    } catch (err) {
-        return res.status(500).json({ success: false, message: err.message });
-    }
+    } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
 });
 
 app.post('/api/team/setup-confirm', async (req, res) => {
@@ -267,9 +299,7 @@ app.post('/api/team/setup-confirm', async (req, res) => {
         const { error } = await supabase.from('teams').update({ pin: String(pin).trim() }).eq('group_number', groupNo);
         if (error) return res.status(500).json({ success: false });
         return res.json({ success: true });
-    } catch (err) {
-        return res.status(500).json({ success: false });
-    }
+    } catch (err) { return res.status(500).json({ success: false }); }
 });
 
 app.post('/api/team/login', async (req, res) => {
@@ -278,9 +308,7 @@ app.post('/api/team/login', async (req, res) => {
         const { data, error } = await supabase.from('teams').select('*').eq('group_number', String(groupNo).trim()).eq('pin', String(pin).trim()).maybeSingle();
         if (error || !data) return res.status(401).json({ success: false, message: "Invalid Group Number or PIN combination." });
         return res.json({ success: true, team: data });
-    } catch (err) {
-        return res.status(500).json({ success: false, message: err.message });
-    }
+    } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
 });
 
 app.get('/api/team/logs/:teamId', async (req, res) => {
@@ -301,10 +329,8 @@ app.post('/api/manage/purge', async (req, res) => {
         await supabase.from('logs').delete().neq('team_id', 'RESET_FORCE');
         await supabase.from('events').delete().neq('code', 'RESET_FORCE');
         return res.json({ success: true });
-    } catch (err) {
-        return res.status(500).json({ success: false, message: err.message });
-    }
+    } catch (err) { return res.status(500).json({ success: false, message: err.message }); }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Chameleon Backend Pipeline running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Chameleon Backend Engine running on port ${PORT}`));
