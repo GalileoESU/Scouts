@@ -243,7 +243,8 @@
     </div>
 
     <script>
-        const BACKEND_URL = window.location.origin.includes('localhost') ? 'http://localhost:3000' : '';
+        // FIXED LIVE BACKEND PIPELINE LINK
+        const BACKEND_URL = 'https://scouts-backend-24lj.onrender.com';
         
         // GLOBAL HARDWARE CAMERA INSTANCE CONTROL VARIABLES
         let globalScannerInstance = null;
@@ -255,7 +256,6 @@
          * Global View Routing Utility Switcher
          */
         function navigateToPanel(targetPanelId) {
-            // Gracefully close any camera tracks looping if moving away from setup views
             killActiveScannerStream();
 
             const sections = document.querySelectorAll('.card');
@@ -266,7 +266,6 @@
                 activeSection.classList.add('active');
             }
 
-            // Immediately boot camera hardware loops if navigating directly to Setup Profile tabs
             if (targetPanelId === 'view-team-setup') {
                 initializePortalSetupScanner();
             }
@@ -286,7 +285,6 @@
                 localDeviceCamerasList = await Html5Qrcode.getCameras();
 
                 if (localDeviceCamerasList && localDeviceCamerasList.length > 0) {
-                    // Start default pointer pointing at environmental back cameras on phones
                     globalCameraIndexPointer = localDeviceCamerasList.length - 1;
                     selectedHardwareCameraId = localDeviceCamerasList[globalCameraIndexPointer].id;
                     await deployPortalSetupCameraPipeline();
@@ -312,17 +310,16 @@
                 { fps: 15, qrbox: { width: 240, height: 240 } },
                 async (decodedTextString) => {
                     console.log("🎯 Entry Portal Registration QR Match Found:", decodedTextString);
-                    if (elementFrame) elementFrame.style.borderColor = "#22c55e"; // Flash green success indication
+                    if (elementFrame) elementFrame.style.borderColor = "#22c55e";
                     
-                    // Route pure decoded 8-digit randomized backup code string token to registration lookup loops
                     await processScannedPassportLookup(decodedTextString.trim());
                 },
-                () => {} // Framework logging frequency constraints ignored
+                () => {}
             ).catch(err => console.error("Camera acquisition tracking lock failed:", err));
         }
 
         /**
-         * sequential step indexing allowing clients to cycle loops of front/rear camera optics safely
+         * Sequential step indexing allowing clients to cycle loops of front/rear camera optics safely
          */
         async function triggerCameraSwitchCycle() {
             if (!globalScannerInstance) {
@@ -361,7 +358,6 @@
          */
         async function processScannedPassportLookup(passportTokenString) {
             try {
-                // Post scanned backup security token directly to query target database allocations
                 const response = await fetch(`${BACKEND_URL}/api/client/process-passport`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -373,20 +369,14 @@
 
                 const data = await response.json();
                 
-                // If token successfully returns a target team profiling context assignment
                 if (response.status === 200 || data.success || data.type === 'CHECKIN') {
-                    // Extract team matching characteristics. If backend returns structured targets inside message contexts, parse numbers.
-                    // To safeguard matching parameters, look for explicit group configurations using the returned tokens.
                     let targetNumberStr = "";
                     if (data.message) {
                         const matchMatches = data.message.match(/Group\s+(\d+)/i);
                         if (matchMatches) targetNumberStr = matchMatches[1];
                     }
-                    
-                    // Fallback to direct secondary lookup if explicit metadata parsing fails
                     executeDatabaseDirectLookupFallback(targetNumberStr || passportTokenString);
                 } else {
-                    // Handle edge matching contexts gracefully
                     if (data.message && data.message.includes("verified at this Checkpoint")) {
                         const matchFallback = data.message.match(/Group\s+(\d+)/i);
                         if (matchFallback) {
@@ -397,7 +387,6 @@
                     alert(`❌ Identification Failed: ${data.message || 'No matching database profile allocation matches that token.'}`);
                 }
             } catch(e) {
-                // Network communication failures fallback gracefully to clean number matching configurations
                 alert("Network communication timeout verifying digital credentials token.");
             }
         }
@@ -406,7 +395,6 @@
          * Staging component resolution lookup layer matching structural target constraints
          */
         function executeDatabaseDirectLookupFallback(lookupParam) {
-            // Clean values out to make sure strings process smoothly
             let cleanLookup = String(lookupParam).trim();
             
             fetch(`${BACKEND_URL}/api/team/setup-lookup`, {
@@ -417,7 +405,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    killActiveScannerStream(); // Shuts camera off to prevent battery drainage logs
+                    killActiveScannerStream();
                     
                     document.getElementById("setup-resolved-group-id").value = data.team.group_number;
                     document.getElementById("setup-resolved-group-name").value = data.team.name;
