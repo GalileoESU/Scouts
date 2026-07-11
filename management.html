@@ -577,7 +577,7 @@
         }
 
         function initializeCheckpointScanningSessionStream(stationCode) {
-            terminateCheckpointScanningStream(); // Kill any lingering session first
+            terminateCheckpointScanningStream(); 
             
             selectedCheckpointStationID = stationCode;
             document.getElementById('checkpoint-active-scanning-header').innerText = `Checkpoint Node (${stationCode}) Active Console`;
@@ -607,12 +607,14 @@
         }
 
         function submitManualCheckpointCheckin() {
-            const teamIdInput = document.getElementById('checkpoint-manual-field').value.trim();
+            let teamIdInput = document.getElementById('checkpoint-manual-field').value.trim();
             if(!teamIdInput) { alert("Please input a Group Identifier Number first."); return; }
             
-            // Reconstruct token passport format standard expected by backend parsing match rule
-            const structuredToken = `CHAMELEON_TEAM_${teamIdInput}`;
-            transmitCheckpointCheckinAction(structuredToken);
+            // Normalize input so staff can type the number or the full string directly
+            if(!teamIdInput.toUpperCase().includes("TEAM_") && !teamIdInput.toUpperCase().includes("GROUP_")) {
+                teamIdInput = `CHAMELEON_TEAM_${teamIdInput}`;
+            }
+            transmitCheckpointCheckinAction(teamIdInput);
         }
 
         function transmitCheckpointCheckinAction(passportTokenString) {
@@ -663,22 +665,19 @@
             let arrayCollection = [];
 
             if(currentQRFilterSelection === 'General') {
-                // Points directly to home/root website layout for the print-out poster display
                 const homePageURL = window.location.origin + '/';
                 arrayCollection = [{ id: 'SYSTEM_HOME_PORTAL', label: 'Scan to Open Wide-Game Portal Home Screen', codeString: homePageURL }];
             } else if(['Scout', 'ESU', 'Catcher'].includes(currentQRFilterSelection)) {
                 arrayCollection = matrixCache.teams.filter(t => t.category === currentQRFilterSelection)
                     .map(t => ({ id: t.group_number, label: `${t.scout_group} (#${t.group_number})`, codeString: `CHAMELEON_INITIALIZE_GROUP_${t.group_number}` }));
             } else if(currentQRFilterSelection === 'Waypoints') {
-                // Generates an explicit 8-character long string for backup fallback inputs
+                // Formats backup targets with a structured 8-digit unique code sequence string
                 arrayCollection = matrixCache.events.filter(e => e.type === 'Waypoint').map(e => {
                     const paddedCode = String(e.code).padStart(3, '0');
                     const backupManualString = `WP-${paddedCode}`; 
-                    return { id: e.code, label: `${e.type} (Backup Code: ${backupManualString})`, codeString: paddedCode };
+                    return { id: e.code, label: `${e.type} (Manual Fallback Entry Code: ${backupManualString})`, codeString: paddedCode };
                 });
             }
-
-            // Note: Checkpoints are omitted as they are handled explicitly by staff and don't need QR Codes.
 
             const cleanFiltered = arrayCollection.filter(item => item.id.toLowerCase().includes(query) || item.label.toLowerCase().includes(query));
 
