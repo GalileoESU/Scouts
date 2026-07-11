@@ -220,16 +220,30 @@
     </div>
 
     <div id="panel-checkpoint" class="workspace-panel">
-        <h2>Station Checkpoint Scanning Console</h2>
-        <p>Select a checkpoint node station identifier sequence to open camera collection framework streams.</p>
+        <h2>Station Checkpoint Processing Console</h2>
+        <p>Select a checkpoint node station identifier to manage check-ins via camera scanner or manual entry overrides.</p>
         <div class="form-card" id="checkpoint-stations-btn-box"></div>
 
         <div class="form-card" id="checkpoint-camera-sub-box" style="display:none; text-align:center;">
-            <h3 id="checkpoint-active-scanning-header">Scanning Checkpoint Node</h3>
-            <div style="max-width:320px; margin: 15px auto; border-radius:12px; overflow:hidden; border:2px solid #4a148c;">
+            <h3 id="checkpoint-active-scanning-header">Processing Checkpoint Node</h3>
+            
+            <div style="max-width:320px; margin: 15px auto; border-radius:12px; overflow:hidden; border:2px solid #4a148c; background:#000;">
                 <div id="checkpoint-camera-element" style="width:100%;"></div>
             </div>
-            <button class="action-btn danger-btn" onclick="terminateCheckpointScanningStream()">Close Scanner Interface</button>
+
+            <div style="margin: 15px 0;">
+                <button class="action-btn" onclick="toggleCheckpointCameraDirection()" style="background-color:#0288d1; margin-right:10px;">🔄 Switch Camera</button>
+                <button class="action-btn danger-btn" onclick="terminateCheckpointScanningStream()">Close Scanner Interface</button>
+            </div>
+
+            <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+            
+            <div style="background:#f9f9f9; padding:15px; border-radius:8px; border:1px dashed #ccc; display:inline-block;">
+                <h4>Manual Backup Passport Input</h4>
+                <p style="font-size:12px; color:#666; margin-top:-8px;">Device doesn't have a working camera? Type the Team Identifier Number below:</p>
+                <input type="text" class="text-input" id="checkpoint-manual-field" placeholder="e.g. 5, 12, C1">
+                <button class="action-btn" onclick="submitManualCheckpointCheckin()" style="background-color:#2e7d32;">Submit Check-in</button>
+            </div>
         </div>
     </div>
 
@@ -302,8 +316,12 @@
     <script>
         const BACKEND_URL = 'https://scouts-backend-24lj.onrender.com';
         let matrixCache = { teams: [], logs: [], events: [] };
+        
+        // Checkpoint Camera Session States
         let activeCheckpointScanner = null;
         let selectedCheckpointStationID = null;
+        let checkpointFacingMode = "environment"; 
+        
         let currentQRFilterSelection = 'General';
 
         function switchMgmtTab(target, triggerLink) {
@@ -336,11 +354,11 @@
                 ];
             } else if (templateType === 'event') {
                 fileName = "Operation_Chameleon_Waypoint_Infrastructure_Template.xlsx";
-                columnHeaders = ["Code", "Type", "Target Group", "Value"];
+                columnHeaders = ["Code", "Type", "Target Group"];
                 mockRows = [
-                    ["W01", "Waypoint", "All", "10"],
-                    ["W02", "Waypoint", "Scout", "15"],
-                    ["CP1", "Checkpoint", "All", "0"]
+                    ["W01", "Waypoint", "All"],
+                    ["W02", "Waypoint", "Scout"],
+                    ["CP1", "Checkpoint", "All"]
                 ];
             }
 
@@ -369,7 +387,6 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // Overhauled Direct JSON Ingestion Engine Block
         function processAndForceUploadFile(type) {
             const picker = document.getElementById(`upload-input-${type}`);
             const file = picker.files[0];
@@ -408,7 +425,7 @@
                     parsedPayload = rows.map(r => {
                         let code = r['Checkpoint / Waypoint No'] || r['Code'] || r['code'] || r['No'] || '';
                         let typeVal = r['Type'] || r['type'] || 'Waypoint';
-                        let target = r['Group'] || r['Target Group'] || r['target_group'] || r['Group'] || 'All';
+                        let target = r['Group'] || r['Target Group'] || r['target_group'] || 'All';
 
                         typeVal = String(typeVal).trim();
                         if (typeVal.toLowerCase().startsWith("way")) typeVal = "Waypoint";
@@ -560,15 +577,42 @@
         }
 
         function initializeCheckpointScanningSessionStream(stationCode) {
+            terminateCheckpointScanningStream(); // Kill any lingering session first
+            
             selectedCheckpointStationID = stationCode;
-            document.getElementById('checkpoint-active-scanning-header').innerText = `Checkpoint Node (${stationCode}) Scanning`;
+            document.getElementById('checkpoint-active-scanning-header').innerText = `Checkpoint Node (${stationCode}) Active Console`;
             document.getElementById('checkpoint-camera-sub-box').style.display = 'block';
+            document.getElementById('checkpoint-manual-field').value = '';
 
             activeCheckpointScanner = new Html5Qrcode("checkpoint-camera-element");
+            startCheckpointCameraEngine();
+        }
+
+        function startCheckpointCameraEngine() {
+            if (!activeCheckpointScanner) return;
             activeCheckpointScanner.start(
-                { facingMode: "environment" }, { fps: 10, qrbox: 220 },
-                (decodedText) => { transmitCheckpointCheckinAction(decodedText); }, () => {}
+                { facingMode: checkpointFacingMode }, 
+                { fps: 10, qrbox: 220 },
+                (decodedText) => { transmitCheckpointCheckinAction(decodedText); }, 
+                () => {}
             ).catch(() => {});
+        }
+
+        function toggleCheckpointCameraDirection() {
+            if (!activeCheckpointScanner) return;
+            checkpointFacingMode = (checkpointFacingMode === "environment") ? "user" : "environment";
+            activeCheckpointScanner.stop().then(() => {
+                startCheckpointCameraEngine();
+            });
+        }
+
+        function submitManualCheckpointCheckin() {
+            const teamIdInput = document.getElementById('checkpoint-manual-field').value.trim();
+            if(!teamIdInput) { alert("Please input a Group Identifier Number first."); return; }
+            
+            // Reconstruct token passport format standard expected by backend parsing match rule
+            const structuredToken = `CHAMELEON_TEAM_${teamIdInput}`;
+            transmitCheckpointCheckinAction(structuredToken);
         }
 
         function transmitCheckpointCheckinAction(passportTokenString) {
@@ -584,6 +628,7 @@
             .then(res => res.json())
             .then(data => {
                 if(data.success) {
+                    document.getElementById('checkpoint-manual-field').value = '';
                     document.getElementById('checkpoint-modal-msg-box').innerText = data.message;
                     document.getElementById('checkpoint-success-modal').style.display = 'flex';
                 } else { alert(`❌ Error: ${data.message}`); }
@@ -597,7 +642,7 @@
         function terminateCheckpointScanningStream() {
             document.getElementById('checkpoint-camera-sub-box').style.display = 'none';
             if(activeCheckpointScanner) {
-                activeCheckpointScanner.stop().then(() => { activeCheckpointScanner = null; });
+                activeCheckpointScanner.stop().then(() => { activeCheckpointScanner = null; }).catch(()=>{ activeCheckpointScanner = null; });
             }
         }
 
@@ -618,13 +663,22 @@
             let arrayCollection = [];
 
             if(currentQRFilterSelection === 'General') {
-                arrayCollection = [{ id: 'INITIALIZE_LAUNCHPAD_PORTAL', label: 'Launch System Setup', codeString: 'CHAMELEON_INITIALIZE_LAUNCHPAD' }];
+                // Points directly to home/root website layout for the print-out poster display
+                const homePageURL = window.location.origin + '/';
+                arrayCollection = [{ id: 'SYSTEM_HOME_PORTAL', label: 'Scan to Open Wide-Game Portal Home Screen', codeString: homePageURL }];
             } else if(['Scout', 'ESU', 'Catcher'].includes(currentQRFilterSelection)) {
                 arrayCollection = matrixCache.teams.filter(t => t.category === currentQRFilterSelection)
                     .map(t => ({ id: t.group_number, label: `${t.scout_group} (#${t.group_number})`, codeString: `CHAMELEON_INITIALIZE_GROUP_${t.group_number}` }));
             } else if(currentQRFilterSelection === 'Waypoints') {
-                arrayCollection = matrixCache.events.map(e => ({ id: e.code, label: `${e.type} Node: ${e.code}`, codeString: e.code }));
+                // Generates an explicit 8-character long string for backup fallback inputs
+                arrayCollection = matrixCache.events.filter(e => e.type === 'Waypoint').map(e => {
+                    const paddedCode = String(e.code).padStart(3, '0');
+                    const backupManualString = `WP-${paddedCode}`; 
+                    return { id: e.code, label: `${e.type} (Backup Code: ${backupManualString})`, codeString: paddedCode };
+                });
             }
+
+            // Note: Checkpoints are omitted as they are handled explicitly by staff and don't need QR Codes.
 
             const cleanFiltered = arrayCollection.filter(item => item.id.toLowerCase().includes(query) || item.label.toLowerCase().includes(query));
 
