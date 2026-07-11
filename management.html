@@ -222,8 +222,7 @@
     <div id="panel-checkpoint" class="workspace-panel">
         <h2>Station Checkpoint Scanning Console</h2>
         <p>Select a checkpoint node station identifier sequence to open camera collection framework streams.</p>
-        <div class="form-card" id="checkpoint-stations-btn-box">
-            </div>
+        <div class="form-card" id="checkpoint-stations-btn-box"></div>
 
         <div class="form-card" id="checkpoint-camera-sub-box" style="display:none; text-align:center;">
             <h3 id="checkpoint-active-scanning-header">Scanning Checkpoint Node</h3>
@@ -370,7 +369,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // INTELLIGENT INTERCEPT TRANSLATION LAYER ENGINE
+        // Overhauled Direct JSON Ingestion Engine Block
         function processAndForceUploadFile(type) {
             const picker = document.getElementById(`upload-input-${type}`);
             const file = picker.files[0];
@@ -381,107 +380,74 @@
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
                 const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const baseRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                const rows = XLSX.utils.sheet_to_json(worksheet);
 
-                if (baseRows.length < 2) { alert("Spreadsheet has insufficient row definitions."); return; }
-
-                const userHeaders = baseRows[0].map(h => String(h).trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
-                const rawDataRows = baseRows.slice(1);
-
-                // Normalization mappings
-                let cleanRows = rawDataRows.map(row => {
-                    let obj = {};
-                    baseRows[0].forEach((origHead, idx) => {
-                        let normalized = origHead.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                        obj[normalized] = row[idx] !== undefined ? String(row[idx]).trim() : "";
-                    });
-                    return obj;
-                });
-
-                // Generate three strategic translation variations
-                let variationA = [], variationB = [], variationC = [];
+                let parsedPayload = [];
 
                 if (type === 'people') {
-                    variationA.push(["group_number", "scout_group", "category", "no_of_people"]);
-                    variationB.push(["Group Number", "Scout Group", "Category", "No Of People"]);
-                    variationC.push(["groupNumber", "scoutGroup", "category", "noOfPeople"]);
+                    parsedPayload = rows.map(r => {
+                        let num = r['Group Number'] || r['group_number'] || r['Team No'] || r['Number'] || '';
+                        let grp = r['Scout Group'] || r['Group Scout Group'] || r['scout_group'] || r['Name'] || '';
+                        let cat = r['Category'] || r['Group Category'] || r['category'] || 'Scout';
+                        let size = r['No of People'] || r['no_of_people'] || r['Size'] || 1;
 
-                    cleanRows.forEach(r => {
-                        let num = r.groupnumber || r.groupnum || r.teamno || r.id || "";
-                        let grp = r.scoutgroup || r.groupname || r.teamname || "";
-                        let cat = r.category || r.type || "Scout";
-                        let size = r.noofpeople || r.teamsize || r.size || "4";
+                        cat = String(cat).trim();
+                        if (cat.toLowerCase().startsWith("scout")) cat = "Scout";
+                        if (cat.toLowerCase().startsWith("esu") || cat.toLowerCase().startsWith("expl")) cat = "ESU";
+                        if (cat.toLowerCase().startsWith("catch")) cat = "Catcher";
 
-                        if (num) {
-                            variationA.push([num, grp, cat, size]);
-                            variationB.push([num, grp, cat, size]);
-                            variationC.push([num, grp, cat, size]);
-                        }
-                    });
+                        return {
+                            group_number: String(num).trim(),
+                            scout_group: String(grp).trim(),
+                            category: cat,
+                            no_of_people: parseInt(size) || 1
+                        };
+                    }).filter(item => item.group_number !== '');
+
                 } else {
-                    variationA.push(["code", "type", "target_group", "value"]);
-                    variationB.push(["Code", "Type", "Target Group", "Value"]);
-                    variationC.push(["code", "type", "targetGroup", "value"]);
+                    parsedPayload = rows.map(r => {
+                        let code = r['Checkpoint / Waypoint No'] || r['Code'] || r['code'] || r['No'] || '';
+                        let typeVal = r['Type'] || r['type'] || 'Waypoint';
+                        let target = r['Group'] || r['Target Group'] || r['target_group'] || r['Group'] || 'All';
 
-                    cleanRows.forEach(r => {
-                        let code = r.code || r.id || r.waypointcode || "";
-                        let typeVal = r.type || r.stationtype || "Waypoint";
-                        let target = r.targetgroup || r.target || "All";
-                        let val = r.value || r.points || "10";
+                        typeVal = String(typeVal).trim();
+                        if (typeVal.toLowerCase().startsWith("way")) typeVal = "Waypoint";
+                        if (typeVal.toLowerCase().startsWith("check")) typeVal = "Checkpoint";
 
-                        if (code) {
-                            variationA.push([code, typeVal, target, val]);
-                            variationB.push([code, typeVal, target, val]);
-                            variationC.push([code, typeVal, target, val]);
-                        }
-                    });
+                        return {
+                            code: String(code).trim().padStart(3, '0'),
+                            type: typeVal,
+                            target_group: String(target).trim()
+                        };
+                    }).filter(item => item.code !== '000' && item.code !== '');
                 }
 
-                // Force upload attempt via Variation B (Title Case) first, fallbacks run concurrently
-                let fileBlob = matrixToExcelBlob(variationB);
-                const formData = new FormData();
-                formData.append(type === 'people' ? 'peopleFile' : 'eventFile', fileBlob, 'forced_structure.xlsx');
+                if(parsedPayload.length === 0) {
+                    alert("No valid structural data could be extracted from this spreadsheet.");
+                    return;
+                }
 
                 try {
-                    let response = await fetch(`${BACKEND_URL}/api/manage/upload-${type}`, { method: 'POST', body: formData });
+                    let endpoint = type === 'people' ? 'inject-people-json' : 'inject-event-json';
+                    let response = await fetch(`${BACKEND_URL}/api/manage/${endpoint}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ payload: parsedPayload })
+                    });
                     let result = await response.json();
                     
-                    if (result.success && result.count > 0) {
-                        alert(`✅ Database Synced! Successfully ingested ${result.count} records directly to the server.`);
-                        picker.value = '';
-                        loadDashboardHomeMetrics();
-                        return;
-                    }
-
-                    // Retry Fallback sequence if row ingest evaluates to 0
-                    let fallbackBlob = matrixToExcelBlob(variationA);
-                    const fallbackForm = new FormData();
-                    fallbackForm.append(type === 'people' ? 'peopleFile' : 'eventFile', fallbackBlob, 'forced_lowercase.xlsx');
-                    
-                    let resp2 = await fetch(`${BACKEND_URL}/api/manage/upload-${type}`, { method: 'POST', body: fallbackForm });
-                    let res2 = await resp2.json();
-                    
-                    if(res2.success && res2.count > 0) {
-                        alert(`✅ Database Synced via Fallback Standard! Ingested ${res2.count} rows.`);
+                    if (result.success) {
+                        alert(`✅ SQL Direct Sync Successful! Added ${result.count} entries cleanly.`);
                         picker.value = '';
                         loadDashboardHomeMetrics();
                     } else {
-                        alert(`⚠️ Server connected completely, but returned 0 rows ingested. Check that your spreadsheet values aren't empty!`);
+                        alert(`❌ Database rejection structural error: ${result.message}`);
                     }
-
                 } catch (err) {
-                    alert("❌ Network pipeline communication failure.");
+                    alert("❌ Communication line with server went down.");
                 }
             };
             reader.readAsArrayBuffer(file);
-        }
-
-        function matrixToExcelBlob(matrix) {
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(matrix);
-            XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            return new Blob([wbout], { type: "application/octet-stream" });
         }
 
         function loadDashboardHomeMetrics() {
@@ -535,7 +501,7 @@
 
             bodyRow.innerHTML = '';
             if(filteredTeams.length === 0) {
-                bodyRow.innerHTML = `<tr><td colspan="12">No registered structural profile records match category parameters grid rows.</td></tr>`;
+                bodyRow.innerHTML = `<tr><td colspan="12">No data matching this filter.</td></tr>`;
                 return;
             }
 
@@ -583,7 +549,7 @@
                     const checkStations = data.events.filter(e => e.type === 'Checkpoint');
 
                     if(checkStations.length === 0) {
-                        container.innerHTML = '<p style="color:#666;">No configuration checkpoints found. Please load an Event spreadsheet sheet asset.</p>';
+                        container.innerHTML = '<p style="color:#666;">No active checkpoints configured.</p>';
                         return;
                     }
 
@@ -601,9 +567,7 @@
             activeCheckpointScanner = new Html5Qrcode("checkpoint-camera-element");
             activeCheckpointScanner.start(
                 { facingMode: "environment" }, { fps: 10, qrbox: 220 },
-                (decodedText) => {
-                    transmitCheckpointCheckinAction(decodedText);
-                }, () => {}
+                (decodedText) => { transmitCheckpointCheckinAction(decodedText); }, () => {}
             ).catch(() => {});
         }
 
@@ -639,9 +603,6 @@
 
         function renderFilteredQRDirectory(filterType) {
             currentQRFilterSelection = filterType;
-            const grid = document.getElementById('qr-directory-canvas-target');
-            grid.innerHTML = '';
-
             fetch(`${BACKEND_URL}/api/manage/master-matrix`)
                 .then(res => res.json()).then(data => {
                     matrixCache = data;
@@ -672,7 +633,6 @@
                 card.className = 'qr-dir-card';
                 card.innerHTML = `<strong>${asset.id}</strong><div id="canvas-dir-node-${idx}"></div><small>${asset.label}</small>`;
                 grid.appendChild(card);
-
                 new QRCode(document.getElementById(`canvas-dir-node-${idx}`), { text: asset.codeString, width: 120, height: 120 });
             });
         }
@@ -680,7 +640,6 @@
         function executeCreateStaffAccount() {
             const username = document.getElementById('new-staff-username').value.trim();
             const pin = document.getElementById('new-staff-pin').value.trim();
-
             if(!username || !pin) return;
 
             fetch(`${BACKEND_URL}/api/manage/users/add`, {
@@ -692,7 +651,7 @@
                     document.getElementById('new-staff-username').value = '';
                     document.getElementById('new-staff-pin').value = '';
                     refreshStaffRegistryProfilesList();
-                } else { alert("User already active inside systems registry."); }
+                } else { alert("Account identifier profile already active."); }
             });
         }
 
@@ -702,8 +661,8 @@
                     const list = document.getElementById('staff-registry-list-render');
                     list.innerHTML = '';
                     data.users.forEach(u => {
-                        let delButton = u.username !== 'BenLewis1' ? `<button class="action-btn danger-btn" style="padding:4px 8px; font-size:11px; margin-left:15px;" onclick="executeDeleteStaffRow('${u.username}')">Remove Account</button>` : '<strong>(Absolute Master Core Account)</strong>';
-                        list.innerHTML += `<li>User Reference Configuration Label ID: <strong>${u.username}</strong> ${delButton}</li>`;
+                        let delButton = u.username !== 'BenLewis1' ? `<button class="action-btn danger-btn" style="padding:4px 8px; font-size:11px; margin-left:15px;" onclick="executeDeleteStaffRow('${u.username}')">Remove Account</button>` : '<strong>(Absolute Master Account)</strong>';
+                        list.innerHTML += `<li>Profile ID: <strong>${u.username}</strong> ${delButton}</li>`;
                     });
                 });
         }
@@ -722,8 +681,8 @@
         }
 
         function executeMasterDatabasePurgeWipe() {
-            if(!confirm("⚠️ MAXIMUM WARNING CRITICAL: Wipe completely all system teams, data logs, scoring arrays, spreadsheets definitions?")) return;
-            fetch(`${BACKEND_URL}/api/manage/purge`, { method: 'POST' }).then(() => { alert("Global records cleanly purged."); window.location.reload(); });
+            if(!confirm("⚠️ MAXIMUM WARNING CRITICAL: Wipe completely all tables?")) return;
+            fetch(`${BACKEND_URL}/api/manage/purge`, { method: 'POST' }).then(() => { alert("Database purged cleanly."); window.location.reload(); });
         }
 
         function executeSignOut() {
