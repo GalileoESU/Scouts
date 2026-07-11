@@ -144,9 +144,15 @@ app.post('/api/manage/upload-event', upload.single('eventFile'), async (req, res
 
 // --- CORE CLIENT ACTION LOGIC (SCANS, CATCHES, BACKUPS) ---
 app.post('/api/client/scan-waypoint', async (req, res) => {
-    const { teamId, code, lat, lon } = req.body;
+    let { teamId, code, lat, lon } = req.body;
     try {
-        const cleanCode = String(code).trim().padStart(3, '0');
+        // Support processing standard codes or manual fallback entries (e.g. "WP-003" -> "003")
+        let cleanCode = String(code).trim().toUpperCase();
+        if (cleanCode.startsWith("WP-")) {
+            cleanCode = cleanCode.replace("WP-", "");
+        }
+        cleanCode = cleanCode.padStart(3, '0');
+
         const { data: ev } = await supabase.from('events').select('*').eq('code', cleanCode).eq('type', 'Waypoint').maybeSingle();
         if (!ev) return res.status(404).json({ success: false, message: `Waypoint ${cleanCode} does not exist.` });
 
@@ -190,6 +196,7 @@ app.post('/api/client/process-passport', async (req, res) => {
 
         const { data: operatorTeam } = await supabase.from('teams').select('*').eq('group_number', operatorId).maybeSingle();
 
+        // 1. Handle Checkpoint Check-in Logic
         if (currentCheckpointContext) {
             await supabase.from('logs').insert([{
                 team_id: targetTeamNum, action_type: 'CHECKIN', target_id: currentCheckpointContext,
@@ -199,6 +206,7 @@ app.post('/api/client/process-passport', async (req, res) => {
             return res.json({ success: true, type: 'CHECKIN', message: `Group ${targetTeamNum} Signed In Successfully` });
         }
 
+        // 2. Handle Catch Logic (Allows scores to go negative)
         if (operatorTeam && operatorTeam.category === 'Catcher') {
             const now = new Date();
             let graceRemainingMinutes = 0;
@@ -217,13 +225,17 @@ app.post('/api/client/process-passport', async (req, res) => {
                 return res.json({ success: true, type: 'GRACE', message: `Target in Grace Period! Encounter logged for safety.` });
             }
 
+            // Updated: Deducts points regardless of current score, allowing it to drop below 0
             await supabase.from('teams').update({
-                points: targetTeam.points - 10, points_lost: targetTeam.points_lost + 10,
-                caught_count: targetTeam.caught_count + 1, last_caught_at: now.toISOString()
+                points: targetTeam.points - 10, 
+                points_lost: targetTeam.points_lost + 10,
+                caught_count: targetTeam.caught_count + 1, 
+                last_caught_at: now.toISOString()
             }).eq('group_number', targetTeamNum);
 
             await supabase.from('teams').update({
-                points: operatorTeam.points + 5, points_gained: operatorTeam.points_gained + 5,
+                points: operatorTeam.points + 5, 
+                points_gained: operatorTeam.points_gained + 5,
                 groups_caught: operatorTeam.groups_caught + 1
             }).eq('group_number', operatorId);
 
